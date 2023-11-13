@@ -1,8 +1,8 @@
 // Lab9Main.c
 // Runs on MSPM0G3507
 // Lab 9 solution
-// Your name
-// Last Modified: 11/6/2023
+// Aidan Aalund and Jason Ochiam
+// Last Modified: 11/13/2023
 
 #include <stdio.h>
 #include <stdint.h>
