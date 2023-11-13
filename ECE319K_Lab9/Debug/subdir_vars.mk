@@ -10,19 +10,19 @@ CMD_SRCS += \
 
 C_SRCS += \
 ../ADC1.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/Clock.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/Clock.c \
 ../DAC5.c \
 ../FIFO1.c \
 ../LED.c \
 ../Lab9Main.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/LaunchPad.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/SPI.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/ST7735.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/LaunchPad.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/SPI.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/ST7735.c \
 ../SmallFont.c \
 ../Sound.c \
 ../Switch.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/TExaS.c \
-C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/Timer.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/TExaS.c \
+C:/Users/aidan/Desktop/ECE\ 319K/Lab\ 9\ Project/MSPkaruga/inc/Timer.c \
 ../UART1.c \
 ../UART2.c 
 
@@ -100,19 +100,19 @@ C_DEPS__QUOTED += \
 
 C_SRCS__QUOTED += \
 "../ADC1.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/Clock.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/Clock.c" \
 "../DAC5.c" \
 "../FIFO1.c" \
 "../LED.c" \
 "../Lab9Main.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/LaunchPad.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/SPI.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/ST7735.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/LaunchPad.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/SPI.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/ST7735.c" \
 "../SmallFont.c" \
 "../Sound.c" \
 "../Switch.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/TExaS.c" \
-"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/inc/Timer.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/TExaS.c" \
+"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/inc/Timer.c" \
 "../UART1.c" \
 "../UART2.c" 
 
