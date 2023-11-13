@@ -158,7 +158,7 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 ECE319K_Lab9.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-armllvm_2.1.3.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"ECE319K_Lab9.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"C:/Users/aidan/Desktop/ECE 319K/Lab 9 Project/MSPkaruga/ECE319K_Lab9/Debug/syscfg" -Wl,-i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-armllvm_2.1.3.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="ECE319K_Lab9_linkInfo.xml" -Wl,--rom_model -o "ECE319K_Lab9.out" $(ORDERED_OBJS)
+	"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-armllvm_2.1.3.LTS/bin/tiarmclang.exe" -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O0 -D__MSPM0G3507__ -gdwarf-3 -Wl,-m"ECE319K_Lab9.map" -Wl,--heap_size=512 -Wl,--stack_size=512 -Wl,-i"C:/Users/jonat/OneDrive/Desktop/test/MSPM0_ValvanoWare/ECE319K_Lab9/Debug/syscfg" -Wl,-i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-armllvm_2.1.3.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="ECE319K_Lab9_linkInfo.xml" -Wl,--rom_model -o "ECE319K_Lab9.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
