@@ -3,3 +3,4 @@ inc/
 ECE319K_Lab9/.settings/
 ECE319K_Lab9/Debug/
 *.mk
+*.o
