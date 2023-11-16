@@ -52,10 +52,10 @@ void LED_Toggle(uint32_t data){
     GPIOA->DOUTTGL31_0 = data;
 }
 
-void mainled(void){
-    // TODO: incomplete
+int main(void){
     Clock_Init80MHz(0);
     LaunchPad_Init();
+    LED_Init();
     while(1){
         LED_On(LEFT|MID|RIGHT);
         Clock_Delay(8000000); // breakpoint here to debug

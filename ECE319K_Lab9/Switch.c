@@ -28,7 +28,7 @@ uint32_t Switch_In(void){
 
 // basic test of this method
 // use main to debug the three input switches
-int main1(void){ // main
+static int main1(void){ // main
   uint32_t last=0,now;
   Clock_Init80MHz(0);
   LaunchPad_Init();
