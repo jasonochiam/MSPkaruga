@@ -48,11 +48,17 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
 // game engine goes here
     // 1) sample slide pot
+
     // 2) read input switches
+
     // 3) move sprites
+
     // 4) start sounds
+
     // 5) set semaphore
+
     // NO LCD OUTPUT IN INTERRUPT SERVICE ROUTINES
+
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
   }
 }
