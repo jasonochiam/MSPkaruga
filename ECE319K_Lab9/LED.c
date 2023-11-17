@@ -7,14 +7,12 @@
 #include <ti/devices/msp/msp.h>
 #include "../inc/LaunchPad.h"
 // LaunchPad.h defines all the indices into the PINCM table
-// TODO: not really sure this is right.
 #define LEFT 1<<24
 #define MID 1<<27
 #define RIGHT 1<<28
 
 // initialize your LEDs
 void LED_Init(void){
-    // TODO: likely broken
     // from left to right: PA24, PA27, PA28
     // PINCM
     //   bit 25 is HiZ
@@ -52,7 +50,7 @@ void LED_Toggle(uint32_t data){
     GPIOA->DOUTTGL31_0 = data;
 }
 
-int main(void){
+int mainled(void){
     Clock_Init80MHz(0);
     LaunchPad_Init();
     LED_Init();
