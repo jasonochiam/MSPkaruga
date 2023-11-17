@@ -60,8 +60,9 @@ uint8_t (*TExaSLogic)(void);
 //choose power line 3.3V reference for 0 to 3.3V range
 
 // Bus frequency set by main program
-// continuous sampling, 8 bit mode
-void ADC_Init(ADC12_Regs *adc12, uint32_t channel, uint32_t reference){
+// continuous sampling, 8 bit mode\
+// TODO: Calling this Init2 might've been really dumb
+void ADC_Init2(ADC12_Regs *adc12, uint32_t channel, uint32_t reference){
     // Reset ADC and VREF
     // RSTCLR
     //   bits 31-24 unlock key 0xB1

@@ -22,6 +22,14 @@
 #include "Switch.h"
 #include "Sound.h"
 #include "images/images.h"
+
+
+// Random defines go here
+#define LEFT 1<<24
+#define MID 1<<27
+#define RIGHT 1<<28
+
+
 // ****note to ECE319K students****
 // the data sheet says the ADC does not work when clock is 80 MHz
 // however, the ADC seems to work on my boards at 80 MHz
@@ -159,20 +167,31 @@ int main2(void){ // main2
 }
 
 // use main3 to test switches and LEDs
-int main3(void){ // main3
+int main(void){ // main3
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
   Switch_Init(); // initialize switches
+  JoyStick_Init(); // initialize joystick (including the click stick)
   LED_Init(); // initialize LED
   while(1){
     // write code to test switches and LEDs
-    uint32_t data = Switch_In();
-    if(data == 0) LED_Off((1<<26)|(1<<25)|(1<<24));
-    if(data == 1) LED_On(1<<26);
-    if(data == 2) LED_On(1<<25);
-    if(data == 4) LED_On(1<<24);
-    if(data == 8) LED_On((1<<26)|(1<<25)|(1<<24));
+    uint32_t data = Shoot_In();
+    if(data == 0) LED_Off(LEFT);
+    if(data == 1) LED_On(LEFT);
+
+    data = Select_In();
+    if(data == 0) LED_Off(RIGHT);
+    if(data == 1) LED_On(RIGHT);
+
+    data = Swap_In();
+    if(data == 0) LED_Off(MID);
+    if(data == 1) LED_On(MID);
+
+    // TODO: this does not work.
+    data = JoyStick_InButton();
+    if(data == 0) LED_Off(MID);
+    if(data == 1) LED_On(MID);
   }
 }
 // use main4 to test sound outputs
