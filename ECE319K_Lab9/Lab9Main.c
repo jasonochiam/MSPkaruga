@@ -167,7 +167,7 @@ int main2(void){ // main2
 }
 
 // use main3 to test switches and LEDs
-int main3(void){ // main3
+int main(void){ // main3
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -189,9 +189,10 @@ int main3(void){ // main3
     //if(data == 1) LED_On(MID);
 
     // TODO: this does not work.
+    // Note: this is a negative logic switch
     data = JoyStick_InButton();
-    if(data == 0) LED_Off(MID);
-    if(data == 1) LED_On(MID);
+    if(data == 0) LED_On(MID);
+    if(data == 1) LED_Off(MID);
   }
 }
 // use main4 to test sound outputs

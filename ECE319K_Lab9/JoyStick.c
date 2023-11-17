@@ -47,9 +47,8 @@ void JoyStick_Init(void){
 // Read JoyStick button
 // Input: none
 // Output: 0 if pressed, nonzero if not pressed
-// TODO: does not work.
 uint32_t JoyStick_InButton(void){
-  return GPIOB->DIN31_0 & JOYBUTTON;
+  return !(GPIOB->DIN31_0 & JOYBUTTON);
 }
 
 // Read JoyStick position
@@ -67,7 +66,7 @@ void JoyStick_In(uint32_t *x, uint32_t *y){
 uint32_t XData,YData,ZData, Button,Button1;
 // A lower ADC value means further right for the x axis, and further down for the y axis
 int mainjoystick(void){
-  Clock_Init40MHz();
+  Clock_Init80MHz();
   LaunchPad_Init();
   ADC_InitDual(ADC1,2,6,ADCVREF_VDDA); //accelerometer X,Z (analog)
   while(1){    /* toggle on sample */

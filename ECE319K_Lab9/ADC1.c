@@ -40,7 +40,7 @@ uint32_t ADCin(void){
 //    determine constants k1 k2 to fit Position=(k1*Data + k2)>>12
 uint32_t Convert(uint32_t input){
     return ((1895*input)+13)>>12; // replace this with a linear function
-    // TODO: ensure these values aren't bad
+    // returned values are ok
 }
 
 void OutFix(uint32_t n){
