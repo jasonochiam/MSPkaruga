@@ -10,20 +10,30 @@
 #include "DAC5.h"
 #include "../inc/Timer.h"
 
-
+uint32_t SoundIndex;
 void SysTick_IntArm(uint32_t period, uint32_t priority){
 // write this
+    SysTick-> CTRL = 0x0;
+    SysTick-> LOAD = period-1;
+    SCB->SHP[1]    = (SCB->SHP[1]&(~0xC0000000))|priority<<30;
+    SysTick-> VAL = 0x0;
+    SysTick-> CTRL = 0x07;
 }
 // initialize a 11kHz SysTick, however no sound should be started
 // initialize any global variables
 // Initialize the 5 bit DAC
 void Sound_Init(void){
-// write this
-
+    SysTick_IntArm(1,0);
+    DAC5_Init();
+    SoundIndex = 0;
 }
 void SysTick_Handler(void){ // called at 11 kHz
   // output one value to DAC if a sound is active
-
+    DAC5_Out(shoot[SoundIndex]>>3);
+    SoundIndex++;
+    if(SoundIndex >= 4080){
+        SysTick->LOAD = 0;
+    }
 
 }
 
@@ -43,7 +53,8 @@ void Sound_Start(const uint8_t *pt, uint32_t count){
 }
 void Sound_Shoot(void){
 // write this
-
+    SoundIndex = 0;
+    SysTick->LOAD = 80000000/11025-1;   //this is interrupting at 11khz
 }
 void Sound_Killed(void){
 // write this

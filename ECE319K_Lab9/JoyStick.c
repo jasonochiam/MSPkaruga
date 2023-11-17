@@ -65,6 +65,7 @@ void JoyStick_In(uint32_t *x, uint32_t *y){
 
 uint32_t XData,YData,ZData, Button,Button1;
 // A lower ADC value means further right for the x axis, and further down for the y axis
+
 int mainjoystick(void){
   Clock_Init80MHz();
   LaunchPad_Init();
