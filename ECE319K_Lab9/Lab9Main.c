@@ -167,7 +167,7 @@ int main2(void){ // main2
 }
 
 // use main3 to test switches and LEDs
-int main(void){ // main3
+int main3(void){ // main3
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -184,9 +184,9 @@ int main(void){ // main3
     if(data == 0) LED_Off(RIGHT);
     if(data == 1) LED_On(RIGHT);
 
-    data = Swap_In();
-    if(data == 0) LED_Off(MID);
-    if(data == 1) LED_On(MID);
+    //data = Swap_In();
+    //if(data == 0) LED_Off(MID);
+    //if(data == 1) LED_On(MID);
 
     // TODO: this does not work.
     data = JoyStick_InButton();
@@ -205,7 +205,7 @@ int main4(void){ uint32_t last=0,now;
   TExaS_Init(ADC0,6,0); // ADC1 channel 6 is PB20, TExaS scope
   __enable_irq();
   while(1){
-    now = Switch_In(); // one of your buttons
+    now = Switch_Shoot(); // one of your buttons
     if((last == 0)&&(now == 1)){
       Sound_Shoot(); // call one of your sounds
     }
