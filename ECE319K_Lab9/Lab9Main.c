@@ -13,6 +13,7 @@
 #include "../inc/TExaS.h"
 #include "../inc/Timer.h"
 #include "ADC1.h"
+#include "ADC.h"
 #include "DAC5.h"
 #include "FIFO1.h"
 #include "UART1.h"
@@ -25,9 +26,19 @@
 
 
 // Random defines go here
+// LED defines
 #define LEFT 1<<24
 #define MID 1<<27
 #define RIGHT 1<<28
+
+uint32_t Flag = 0; // Semaphore
+uint32_t Language; // 0 for english, 1 para español
+uint32_t XData; // Variable that holds X position of stick
+uint32_t YData; // Variable that holds Y position of stick
+uint32_t shoots;
+uint32_t selects;
+uint32_t swaps;
+uint32_t ups;
 
 
 // ****note to ECE319K students****
@@ -48,6 +59,8 @@ uint32_t Random(uint32_t n){
   return (Random32()>>16)%n;
 }
 
+// prototype for moving
+void move(void);
 
 // games  engine runs at 30Hz
 void TIMG12_IRQHandler(void){uint32_t pos,msg;
@@ -56,14 +69,18 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
 // game engine goes here
     // 1) sample slide pot
-
+    ADC_InDual(ADC1,&XData,&YData);
     // 2) read input switches
-
+    shoots = Shoot_In();
+    selects = Select_In();
+    swaps = Swap_In();
+    ups = Up_In();
     // 3) move sprites
-
+    move();
     // 4) start sounds
-
+    // Jason said this wasn't needed, so I didn't write it.
     // 5) set semaphore
+    Flag = 1;
 
     // NO LCD OUTPUT IN INTERRUPT SERVICE ROUTINES
 
@@ -149,10 +166,18 @@ int main2(void){ // main2
   ST7735_DrawBitmap(60, 9, SmallEnemy20pointB, 16,10);
   ST7735_DrawBitmap(80, 9, SmallEnemy30pointA, 16,10);
 
-  for(uint32_t t=500;t>0;t=t-5){
+//  for(uint32_t t=500;t>0;t=t-5){
+//    SmallFont_OutVertical(t,104,6); // top left
+//    Clock_Delay1ms(50);              // delay 50 msec
+//  }
+
+  // Demo with enemy moving down at 1 pixel per frame
+  for(uint32_t t=9;t<127;t++){
+    ST7735_DrawBitmap(60, t, SmallEnemy10pointA, 16,10);
     SmallFont_OutVertical(t,104,6); // top left
-    Clock_Delay1ms(50);              // delay 50 msec
+    Clock_Delay1ms(33);              // delay 50 msec
   }
+
   ST7735_FillScreen(0x0000);   // set screen to black
   ST7735_SetCursor(1, 1);
   ST7735_OutString("GAME OVER");
@@ -184,19 +209,17 @@ int main3(void){ // main3
     if(data == 0) LED_Off(RIGHT);
     if(data == 1) LED_On(RIGHT);
 
-    //data = Swap_In();
-    //if(data == 0) LED_Off(MID);
-    //if(data == 1) LED_On(MID);
+    data = Swap_In();
+    if(data == 0) LED_Off(MID);
+    if(data == 1) LED_On(MID);
 
-    // TODO: this does not work.
-    // Note: this is a negative logic switch
     data = JoyStick_InButton();
     if(data == 0) LED_On(MID);
     if(data == 1) LED_Off(MID);
   }
 }
 // use main4 to test sound outputs
-int main(void){ uint32_t last=0,now;
+int main4(void){ uint32_t last=0,now;
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
@@ -223,30 +246,135 @@ int main(void){ uint32_t last=0,now;
     // modify this to test all your sounds
   }
 }
+
+// Sprite structure
+struct sprite{
+    uint32_t life; // 0 dead, 1 alive, 2 is dying
+    uint32_t color; // 0 is blue, 1 is red (use this for checking bullet-player collisions AFTER you know a hit has occurred)
+    int32_t x,y; // positive lower left corner
+    int32_t lastx,lasty; // used to avoid sprite flicker
+    const uint16_t *image; // the default image for the sprite
+    const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
+    // TODO: more image pointers as needed for animation frames, other status values
+    int32_t w,h; // the width and height of the sprite
+    int32_t vx,vy; // the velocity of the sprite
+};
+
+typedef struct sprite sprite_t;
+
+// initialize sprites.
+sprite_t enemy[50];
+sprite_t player;
+void player_init(void){
+    player.x = player.lastx = 64;
+    player.y = player.lasty = 159;
+    player.life = 1;
+    player.image = PlayerShip0;
+    // TODO: program ship damage indicators
+    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
+    player.w = 18;
+    player.h = 8;
+}
+// Enemy pattern, spawns two small enemies at the top of the screen.
+void enemy_init(void){
+    for(int i = 0; i<2; i++){
+        enemy[i].life = 1;
+        enemy[i].x = 32+32*i;
+        enemy[i].y = 10;
+        enemy[i].image = SmallEnemy10pointA;
+        enemy[i].blankimage = SmallEnemy10pointAblank;
+        enemy[i].vx = 0;
+        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
+        enemy[i].w = 16;
+        enemy[i].h = 10;
+    }
+}
+
+// moves all enemies
+void move(void){
+    uint32_t data = ADCin(); // 0 to 4095
+    player.lastx = player.x;
+    player.x = data>>5; //0 to 127
+    if(player.x > 110){
+        player.x = 110;
+    }
+    for(int i = 0; i<22; i++){
+        if(enemy[i].life == 1){
+            if(enemy[i].y >= 157){
+             // this is space invaders logic, enemies 'win' when they move to bottom
+                enemy[i].life = 2;
+               //Sound_Killed(); uncomment later, seems to break the game
+            }
+            else{
+                enemy[i].x += enemy[i].vx;
+                enemy[i].y += enemy[i].vy;
+            }
+
+        }
+    }
+}
+
+void draw(void){
+    // TODO: this sprite anti-flicker code will probably break when we add stick controls
+    // draw blank over last player position
+    if(player.lastx != player.x){
+    ST7735_DrawBitmap(player.lastx, player.lasty,
+                      player.blankimage,
+                      player.w, player.h);
+    }
+    ST7735_DrawBitmap(player.x, player.y,
+                      player.image,
+                      player.w, player.h);
+
+    for(int i = 0; i<50; i++){
+        if(enemy[i].life == 1){
+            ST7735_DrawBitmap(enemy[i].x, enemy[i].y,
+                              enemy[i].image,
+                              enemy[i].w, enemy[i].h);
+        }
+        else if(enemy[i].life == 2){
+            ST7735_DrawBitmap(enemy[i].x, enemy[i].y,
+                              enemy[i].blankimage,
+                              enemy[i].w, enemy[i].h);
+            enemy[i].life = 0;
+        }
+
+    }
+}
+
+
+
 // ALL ST7735 OUTPUT MUST OCCUR IN MAIN
-int main5(void){ // final main
+int main(void){ // final main
   __disable_irq();
   PLL_Init(); // set bus speed
   LaunchPad_Init();
-  UART1_Init(); // just transmit, PA8, blind synchronization
-  UART2_Init(); // just receive, PA22, receiver timeout synchronization
+  //UART1_Init(); // just transmit, PA8, blind synchronization
+  //UART2_Init(); // just receive, PA22, receiver timeout synchronization
   ST7735_InitPrintf();
     //note: if you colors are weird, see different options for
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
   ST7735_FillScreen(ST7735_BLACK);
   ADCinit();     //PB18 = ADC1 channel 5, slidepot
+  //JoyStick_Init(); // Initialize stick
   Switch_Init(); // initialize switches
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
-  TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26
+  enemy_init();
+  player_init();
+  //TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26 USE FOR DEBUGGING?
   // initialize interrupts on TimerG12 at 30 Hz
+  TimerG12_IntArm(80000000/30,3); // low priority interrupt, lower than 3 is higher prio
   // initialize all data structures
   __enable_irq();
 
   while(1){
-    // wait for semaphore
-       // clear semaphore
+    if(Flag){
        // update ST7735R
-    // check for end game or level switch
+       draw();
+       // clear semaphore
+       Flag = 0;
+       // TODO: check for end game or level switch
+    }
   }
 }

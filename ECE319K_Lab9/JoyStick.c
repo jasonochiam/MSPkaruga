@@ -67,7 +67,7 @@ uint32_t XData,YData,ZData, Button,Button1;
 // A lower ADC value means further right for the x axis, and further down for the y axis
 
 int mainjoystick(void){
-  Clock_Init80MHz();
+  Clock_Init80MHz(0);
   LaunchPad_Init();
   ADC_InitDual(ADC1,2,6,ADCVREF_VDDA); //accelerometer X,Z (analog)
   while(1){    /* toggle on sample */
