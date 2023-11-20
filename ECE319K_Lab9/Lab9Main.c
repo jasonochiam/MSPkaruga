@@ -30,15 +30,18 @@
 #define LEFT 1<<24
 #define MID 1<<27
 #define RIGHT 1<<28
+#define FIX 4
 
 uint32_t Flag = 0; // Semaphore
 uint32_t Language; // 0 for english, 1 para español
 uint32_t XData; // Variable that holds X position of stick
 uint32_t YData; // Variable that holds Y position of stick
 uint32_t shoots;
+uint32_t lastshoot;
 uint32_t selects;
 uint32_t swaps;
 uint32_t ups;
+uint32_t click;
 
 
 // ****note to ECE319K students****
@@ -59,8 +62,112 @@ uint32_t Random(uint32_t n){
   return (Random32()>>16)%n;
 }
 
-// prototype for moving
-void move(void);
+// Sprite structure
+struct sprite{
+    uint32_t life; // 0 dead, 1 alive, 2 is dying
+    uint32_t color; // 0 is blue, 1 is red (use this for checking bullet-player collisions AFTER you know a hit has occurred)
+    int32_t x,y; // positive lower left corner
+    int32_t lastx,lasty; // used to avoid sprite flicker
+    uint32_t health;
+    const uint16_t *image; // the default image for the sprite
+    const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
+    // TODO: more image pointers as needed for animation frames, other status values
+    int32_t w,h; // the width and height of the sprite
+    int32_t vx,vy; // the velocity of the sprite
+};
+
+typedef struct sprite sprite_t;
+
+// initialize sprites.
+#define NUMENEMIES 50
+sprite_t enemy[NUMENEMIES];
+#define NUMLASERS 20
+sprite_t lasers[NUMLASERS];
+#define NUMMISSILES 20
+sprite_t missiles[NUMMISSILES];
+sprite_t player;
+
+// Enemy pattern, spawns two small enemies at the top of the screen.
+void enemy_init(void){
+    for(int i = 0; i<2; i++){
+        enemy[i].life = 1;
+        enemy[i].x = (32+32*i)<<FIX;
+        enemy[i].y = 10<<FIX;
+        enemy[i].image = SmallEnemy10pointA;
+        enemy[i].blankimage = SmallEnemy10pointAblank;
+        enemy[i].vx = 0;
+        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
+        enemy[i].w = 16;
+        enemy[i].h = 10;
+    }
+}
+
+// moves all enemies
+void move(void){
+    uint32_t data = ADCin(); // 0 to 4095
+    player.lastx = player.x;
+    player.x = (data>>5)<<FIX; //0 to 127
+    // TODO: implement joystick controls
+    if(player.x > 110<<FIX){
+        player.x = 110<<FIX;
+    }
+    for(int i = 0; i<NUMENEMIES; i++){
+        if(enemy[i].life == 1){
+            if(enemy[i].y >= 157<<FIX){
+             // this is space invaders logic, enemies 'win' when they move to bottom
+                enemy[i].life = 2;
+               //Sound_Killed(); uncomment later, seems to break the game
+            }
+            else{
+                enemy[i].x += enemy[i].vx;
+                enemy[i].y += enemy[i].vy;
+            }
+
+        }
+    }
+}
+
+// initialize player
+void player_init(void){
+    player.x = player.lastx = 64<<FIX;
+    player.y = player.lasty = 159<<FIX;
+    player.life = 1;
+    player.image = PlayerShip0;
+    // TODO: program ship damage indicators
+    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
+    player.w = 18;
+    player.h = 8;
+}
+
+// draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
+void draw(void){
+    // TODO: this sprite anti-flicker code will probably break when we add stick controls. It might not even work now
+    // draw blank over last player position
+    if(player.lastx != player.x){
+    ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
+                      player.blankimage,
+                      player.w, player.h);
+    }
+    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                      player.image,
+                      player.w, player.h);
+
+    for(int i = 0; i<NUMENEMIES; i++){
+        if(enemy[i].life == 1){
+            ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
+                              enemy[i].image,
+                              enemy[i].w, enemy[i].h);
+        }
+        else if(enemy[i].life == 2){
+            ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
+                              enemy[i].blankimage,
+                              enemy[i].w, enemy[i].h);
+            enemy[i].life = 0;
+        }
+
+    }
+}
+
 
 // games  engine runs at 30Hz
 void TIMG12_IRQHandler(void){uint32_t pos,msg;
@@ -70,20 +177,39 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 // game engine goes here
     // 1) sample slide pot
     ADC_InDual(ADC1,&XData,&YData);
+
     // 2) read input switches
     shoots = Shoot_In();
+    // TODO: uncomment this section once a laser shoot has been added
+    // Note: this if statement prevents the player from holding down shoot and firing. I think this is a good change.
+    // Otherwise we have two options, allow shots to fire 30 times a second, or find another way to limit fire rate.
+//    if(lastshoot == 0) &&(shoots == 1)){
+//        laser_shoot(player.x+(9<<FIX),player.y-(8>>FIX),-16);
+//    }
+    lastshoot = shoots;
     selects = Select_In();
+    if(selects){
+        Language = (Language+1)&(0x1);
+    }
     swaps = Swap_In();
+    // TODO: player color swap logic here
     ups = Up_In();
-    // 3) move sprites
+    // TODO: figure out what up will do, if anything.
+    click = JoyStick_InButton();
+    // TODO: figure out screen clear move
+
+    // 3) move sprites and handle collisions
     move();
+    // TODO: check for collisions, incrementing score as needed or charging special attack
+    // Getting hit should subtract from health and score, also stopping a potential streak feature
+    // Hitting something should add to a streak
     // 4) start sounds
     // Jason said this wasn't needed, so I didn't write it.
+
     // 5) set semaphore
     Flag = 1;
 
     // NO LCD OUTPUT IN INTERRUPT SERVICE ROUTINES
-
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
   }
 }
@@ -246,103 +372,6 @@ int main4(void){ uint32_t last=0,now;
     // modify this to test all your sounds
   }
 }
-
-// Sprite structure
-struct sprite{
-    uint32_t life; // 0 dead, 1 alive, 2 is dying
-    uint32_t color; // 0 is blue, 1 is red (use this for checking bullet-player collisions AFTER you know a hit has occurred)
-    int32_t x,y; // positive lower left corner
-    int32_t lastx,lasty; // used to avoid sprite flicker
-    const uint16_t *image; // the default image for the sprite
-    const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
-    // TODO: more image pointers as needed for animation frames, other status values
-    int32_t w,h; // the width and height of the sprite
-    int32_t vx,vy; // the velocity of the sprite
-};
-
-typedef struct sprite sprite_t;
-
-// initialize sprites.
-sprite_t enemy[50];
-sprite_t player;
-void player_init(void){
-    player.x = player.lastx = 64;
-    player.y = player.lasty = 159;
-    player.life = 1;
-    player.image = PlayerShip0;
-    // TODO: program ship damage indicators
-    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
-    player.w = 18;
-    player.h = 8;
-}
-// Enemy pattern, spawns two small enemies at the top of the screen.
-void enemy_init(void){
-    for(int i = 0; i<2; i++){
-        enemy[i].life = 1;
-        enemy[i].x = 32+32*i;
-        enemy[i].y = 10;
-        enemy[i].image = SmallEnemy10pointA;
-        enemy[i].blankimage = SmallEnemy10pointAblank;
-        enemy[i].vx = 0;
-        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
-        enemy[i].w = 16;
-        enemy[i].h = 10;
-    }
-}
-
-// moves all enemies
-void move(void){
-    uint32_t data = ADCin(); // 0 to 4095
-    player.lastx = player.x;
-    player.x = data>>5; //0 to 127
-    if(player.x > 110){
-        player.x = 110;
-    }
-    for(int i = 0; i<22; i++){
-        if(enemy[i].life == 1){
-            if(enemy[i].y >= 157){
-             // this is space invaders logic, enemies 'win' when they move to bottom
-                enemy[i].life = 2;
-               //Sound_Killed(); uncomment later, seems to break the game
-            }
-            else{
-                enemy[i].x += enemy[i].vx;
-                enemy[i].y += enemy[i].vy;
-            }
-
-        }
-    }
-}
-
-void draw(void){
-    // TODO: this sprite anti-flicker code will probably break when we add stick controls
-    // draw blank over last player position
-    if(player.lastx != player.x){
-    ST7735_DrawBitmap(player.lastx, player.lasty,
-                      player.blankimage,
-                      player.w, player.h);
-    }
-    ST7735_DrawBitmap(player.x, player.y,
-                      player.image,
-                      player.w, player.h);
-
-    for(int i = 0; i<50; i++){
-        if(enemy[i].life == 1){
-            ST7735_DrawBitmap(enemy[i].x, enemy[i].y,
-                              enemy[i].image,
-                              enemy[i].w, enemy[i].h);
-        }
-        else if(enemy[i].life == 2){
-            ST7735_DrawBitmap(enemy[i].x, enemy[i].y,
-                              enemy[i].blankimage,
-                              enemy[i].w, enemy[i].h);
-            enemy[i].life = 0;
-        }
-
-    }
-}
-
-
 
 // ALL ST7735 OUTPUT MUST OCCUR IN MAIN
 int main(void){ // final main
