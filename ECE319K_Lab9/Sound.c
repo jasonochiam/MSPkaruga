@@ -9,10 +9,13 @@
 #include "sounds/sounds.h"
 #include "DAC5.h"
 #include "../inc/Timer.h"
+#include "../inc/LaunchPad.h"
+
 
 uint32_t SoundIndex;
 uint8_t *ptsound;
 uint32_t soundsize;
+
 void SysTick_IntArm(uint32_t period, uint32_t priority){    //typical intarm
 // write this
     SysTick-> CTRL = 0x0;
@@ -35,6 +38,7 @@ void SysTick_Handler(void){ // called at 11 kHz
     SoundIndex++;
     if(SoundIndex >= soundsize){        //stop playing once sound is done
         SysTick->LOAD = 0;
+        GPIOB->DOUTCLR31_0 = RED; // toggle PB27 (minimally intrusive debugging)
     }
 
 }
@@ -49,9 +53,8 @@ void SysTick_Handler(void){ // called at 11 kHz
 //        count is the length of the array
 // Output: none
 // special cases: as you wish to implement
-void Sound_Start(const uint8_t *pt, uint32_t count){        //probably wont need to do, as its done in the individual sound functions
-// write this
-
+void Sound_Start(){        //probably wont need to do, as its done in the individual sound functions
+    //SysTick->LOAD = 80000000/11025-1;
 }
 void Sound_Shoot(void){
 // write this

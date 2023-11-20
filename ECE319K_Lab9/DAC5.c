@@ -33,6 +33,7 @@ void DAC5_Init(void){
 // Output: none
 // Note: this solution must be friendly
 void DAC5_Out(uint32_t data){
-    GPIOB->DOUT31_0 = 0x00;
-    GPIOB->DOUTSET31_0 |= data;
+    uint32_t tempdata = (GPIOB->DOUT31_0)&(~0x1F);
+    tempdata |= data;
+    GPIOB->DOUT31_0 = tempdata;
 }

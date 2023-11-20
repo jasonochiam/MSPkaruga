@@ -45,6 +45,9 @@ uint32_t selects;
 uint32_t swaps;
 uint32_t ups;
 uint32_t click;
+uint8_t end = 0;
+
+
 
 
 // ****note to ECE319K students****
@@ -99,7 +102,7 @@ void enemy_init(void){
         enemy[i].image = SmallEnemy10pointA;
         enemy[i].blankimage = SmallEnemy10pointAblank;
         enemy[i].vx = 0;
-        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
+        enemy[i].vy = 10; // NOTE: this is 1 pixel per frame moving DOWN.
         enemy[i].w = 16;
         enemy[i].h = 10;
     }
@@ -107,7 +110,7 @@ void enemy_init(void){
 
 // moves all enemies
 void move(void){
-    // Sample the joystick
+    // Sample the joystick (done twice)
     JoyStick_In(&XData,&YData); // XData is 0 to 4095, higher is more to the left
                                 // YData is 0 to 4095, higher is further up
 
@@ -155,7 +158,10 @@ void move(void){
             if(enemy[i].y >= 157<<FIX){
              // this is space invaders logic, enemies 'win' when they move to bottom
                 enemy[i].life = 2;
-               //Sound_Killed(); uncomment later, seems to break the game
+                GPIOB->DOUTSET31_0 = RED; // toggle PB27 (minimally intrusive debugging)
+                end = 1;    //used to end game in main if aliens win
+                Sound_Killed(); //uncomment later, seems to break the game
+
             }
             else{
                 enemy[i].x += enemy[i].vx;
@@ -192,7 +198,7 @@ void draw(void){
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].blankimage,
                               enemy[i].w, enemy[i].h);
-            enemy[i].life = 0;
+                              enemy[i].life = 0;
         }
 
     }
@@ -211,7 +217,6 @@ void draw(void){
 // games  engine runs at 30Hz
 void TIMG12_IRQHandler(void){uint32_t pos,msg;
   if((TIMG12->CPU_INT.IIDX) == 1){ // this will acknowledge
-    GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
 // game engine goes here
     // 1) sample slide pot
@@ -245,7 +250,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
     // 4) start sounds
     // Jason said this wasn't needed, so I didn't write it.
-
+    //Sound_Start();
     // 5) set semaphore
     Flag = 1;
 
@@ -436,14 +441,30 @@ int main(void){ // final main
   TimerG12_IntArm(80000000/30,3); // low priority interrupt, lower than 3 is higher prio
   // initialize all data structures
   __enable_irq();
-
   while(1){
-    if(Flag){
+    while(Flag){
        // update ST7735R
        draw();
        // clear semaphore
        Flag = 0;
        // TODO: check for end game or level switch
     }
+
+    if(end){
+        TIMG12->CPU_INT.IMASK = 0; // zero event mask
+        ST7735_FillScreen(0x0000);   // set screen to black
+          ST7735_SetCursor(1, 1);
+          ST7735_OutString("GAME OVER");
+          ST7735_SetCursor(1, 2);
+          ST7735_OutString("Nice try,");
+          ST7735_SetCursor(1, 3);
+          ST7735_OutString("Earthling!");
+          ST7735_SetCursor(2, 4);
+          ST7735_OutUDec(1234);
+
+          while(1){
+          }
+    }
+
   }
 }
