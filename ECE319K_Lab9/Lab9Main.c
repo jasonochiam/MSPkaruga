@@ -107,17 +107,17 @@ void enemy_init(void){
         enemy[i].h = 10;
     }
 }
-void missiles_init(void){
+void lasers_init(void){
     for(int i = 0; i<2; i++){
-        missiles[i].life = 1;
-        missiles[i].x = player.x;   //start at center of player
-        missiles[i].y = (player.y + 10)<<FIX;
-        missiles[i].image = Laser0;
-        missiles[i].blankimage = eLaser0;
-        missiles[i].vx = 0;
-        missiles[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
-        missiles[i].w = 2;
-        missiles[i].h = 9;
+        lasers[i].life = 1;
+        lasers[i].x = player.x;   //start at center of player
+        lasers[i].y = (player.y + 10)<<FIX;
+        lasers[i].image = Laser0;
+        lasers[i].blankimage = eLaser0;
+        lasers[i].vx = 0;
+        lasers[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
+        lasers[i].w = 2;
+        lasers[i].h = 9;
     }
 }
 
