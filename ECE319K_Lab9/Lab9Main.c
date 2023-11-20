@@ -107,6 +107,19 @@ void enemy_init(void){
         enemy[i].h = 10;
     }
 }
+void missiles_init(void){
+    for(int i = 0; i<2; i++){
+        missiles[i].life = 1;
+        missiles[i].x = player.x;
+        missiles[i].y = player.y;
+        missiles[i].image = Missile0;
+        missiles[i].blankimage = emissile;
+        missiles[i].vx = 0;
+        missiles[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
+        missiles[i].w = 4;
+        missiles[i].h = 9;
+    }
+}
 
 // moves all enemies
 void move(void){
