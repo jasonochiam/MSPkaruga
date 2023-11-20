@@ -110,13 +110,13 @@ void enemy_init(void){
 void missiles_init(void){
     for(int i = 0; i<2; i++){
         missiles[i].life = 1;
-        missiles[i].x = player.x;
-        missiles[i].y = player.y;
-        missiles[i].image = Missile0;
-        missiles[i].blankimage = emissile;
+        missiles[i].x = player.x;   //start at center of player
+        missiles[i].y = (player.y + 10)<<FIX;
+        missiles[i].image = Laser0;
+        missiles[i].blankimage = eLaser0;
         missiles[i].vx = 0;
         missiles[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
-        missiles[i].w = 4;
+        missiles[i].w = 2;
         missiles[i].h = 9;
     }
 }
