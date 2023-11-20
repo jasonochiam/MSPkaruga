@@ -164,6 +164,8 @@ void move(void){
 
             }
             else{
+                enemy[i].lastx = enemy[i].x;
+                enemy[i].lasty = enemy[i].y;
                 enemy[i].x += enemy[i].vx;
                 enemy[i].y += enemy[i].vy;
             }
@@ -190,6 +192,9 @@ void draw(void){
 
     for(int i = 0; i<2; i++){
         if(enemy[i].life == 1){
+            ST7735_DrawBitmap(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
+                                          enemy[i].blankimage,
+                                          enemy[i].w, enemy[i].h);
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].image,
                               enemy[i].w, enemy[i].h);
