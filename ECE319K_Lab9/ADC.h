@@ -20,6 +20,7 @@ void ADC_Init(ADC12_Regs *adc12,uint32_t channel, uint32_t reference);
 
 void ADC_InitDual(ADC12_Regs *adc12,uint32_t channel1,uint32_t channel2, uint32_t reference);
 
+//void ADC_InDual(ADC12_Regs *adc12,uint32_t *d1, uint32_t *d2);
 void ADC_InDual(ADC12_Regs *adc12,uint32_t *d1, uint32_t *d2);
 
 

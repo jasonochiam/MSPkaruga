@@ -22,6 +22,7 @@
 #include "LED.h"
 #include "Switch.h"
 #include "Sound.h"
+#include "JoyStick.h"
 #include "images/images.h"
 
 
@@ -30,12 +31,14 @@
 #define LEFT 1<<24
 #define MID 1<<27
 #define RIGHT 1<<28
-#define FIX 4
+#define FIX 3
 
 uint32_t Flag = 0; // Semaphore
 uint32_t Language; // 0 for english, 1 para español
 uint32_t XData; // Variable that holds X position of stick
 uint32_t YData; // Variable that holds Y position of stick
+int32_t x;
+int32_t y;
 uint32_t shoots;
 uint32_t lastshoot;
 uint32_t selects;
@@ -104,13 +107,49 @@ void enemy_init(void){
 
 // moves all enemies
 void move(void){
-    uint32_t data = ADCin(); // 0 to 4095
+    // Sample the joystick
+    JoyStick_In(&XData,&YData); // XData is 0 to 4095, higher is more to the left
+                                // YData is 0 to 4095, higher is further up
+
+    // Why did I make another set of variables?
+    // Valvano's code assumes we want to get a unsigned value, however we need it to be signed.
+    // I could've changed the methods, but each method relies on another and I didn't want to mess around with it.
+    // If we are looking for extra speed, maybe I can go and change the drivers so we don't need these two variables.
+    // Convert to signed int reflecting +/-
+    // What should the maximum velocity be? Experiment with values.
+    // Dead-zone has a radius of 100
+    // At the center, the Y value like to hang from 2080 to 2090
+    // For X, 2010 to 2020
+    x = XData-2010; // makes middle close to zero, left is positive, right is negative
+    y = YData-2080;
+    // Deadzone handler: this may not be needed
+    player.vx = (x>>7);
+    player.vy = (y>>7);
+    if((-100<x)&&(x<100)){
+        player.vx = 0;
+    }
+    if((-100<y)&&(y<100)){
+        player.vy = 0;
+      }
+
     player.lastx = player.x;
-    player.x = (data>>5)<<FIX; //0 to 127
-    // TODO: implement joystick controls
+    player.x -= player.vx;
     if(player.x > 110<<FIX){
         player.x = 110<<FIX;
     }
+    if(player.x < 0){
+        player.x = 0;
+    }
+
+    player.lasty = player.y;
+    player.y -= player.vy;
+    if(player.y > 150<<FIX){
+        player.y = 150<<FIX;
+    }
+    if(player.y < 0){
+        player.y = 0;
+    }
+
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life == 1){
             if(enemy[i].y >= 157<<FIX){
@@ -140,19 +179,10 @@ void player_init(void){
 }
 
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
+// Always draw in this order: enemies->player->projectiles
 void draw(void){
-    // TODO: this sprite anti-flicker code will probably break when we add stick controls. It might not even work now
-    // draw blank over last player position
-    if(player.lastx != player.x){
-    ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
-                      player.blankimage,
-                      player.w, player.h);
-    }
-    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                      player.image,
-                      player.w, player.h);
 
-    for(int i = 0; i<NUMENEMIES; i++){
+    for(int i = 0; i<2; i++){
         if(enemy[i].life == 1){
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].image,
@@ -166,6 +196,15 @@ void draw(void){
         }
 
     }
+
+    //if(player.x>>FIX == player.lastx>>FIX) || (player.y>>FIX == player.lasty>>FIX)) might help later on
+    ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
+                      player.blankimage,
+                      player.w, player.h);
+
+    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                      player.image,
+                      player.w, player.h);
 }
 
 
@@ -191,18 +230,19 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     if(selects){
         Language = (Language+1)&(0x1);
     }
-    swaps = Swap_In();
     // TODO: player color swap logic here
-    ups = Up_In();
+    swaps = Swap_In();
     // TODO: figure out what up will do, if anything.
-    click = JoyStick_InButton();
+    ups = Up_In();
     // TODO: figure out screen clear move
+    click = JoyStick_InButton();
 
-    // 3) move sprites and handle collisions
+    // 3) move sprites and handle collisions. Multiple moves will be needed for different enemy groups.
     move();
     // TODO: check for collisions, incrementing score as needed or charging special attack
     // Getting hit should subtract from health and score, also stopping a potential streak feature
     // Hitting something should add to a streak
+
     // 4) start sounds
     // Jason said this wasn't needed, so I didn't write it.
 
@@ -384,14 +424,14 @@ int main(void){ // final main
     //note: if you colors are weird, see different options for
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
   ST7735_FillScreen(ST7735_BLACK);
-  ADCinit();     //PB18 = ADC1 channel 5, slidepot
-  //JoyStick_Init(); // Initialize stick
+  //ADCinit();     //PB18 = ADC1 channel 5, slidepot
+  JoyStick_Init(); // Initialize stick
   Switch_Init(); // initialize switches
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
   enemy_init();
   player_init();
-  //TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26 USE FOR DEBUGGING?
+  TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26 USE FOR DEBUGGING?
   // initialize interrupts on TimerG12 at 30 Hz
   TimerG12_IntArm(80000000/30,3); // low priority interrupt, lower than 3 is higher prio
   // initialize all data structures
