@@ -107,17 +107,19 @@ void enemy_init(void){
         enemy[i].h = 10;
     }
 }
-void lasers_init(void){
-    for(int i = 0; i<2; i++){
-        lasers[i].life = 1;
+void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
+    static uint8_t i = 0;
+    if(i < NUMLASERS){
+        lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
         lasers[i].x = player.x;   //start at center of player
-        lasers[i].y = (player.y + 10)<<FIX;
+        lasers[i].y = player.y;
         lasers[i].image = Laser0;
         lasers[i].blankimage = eLaser0;
         lasers[i].vx = 0;
         lasers[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
         lasers[i].w = 2;
         lasers[i].h = 9;
+        i++;
     }
 }
 
@@ -167,11 +169,10 @@ void move(void){
     }
 
     for(int i = 0; i<NUMENEMIES; i++){
-        if(enemy[i].life == 1){
+        if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
             if(enemy[i].y >= 157<<FIX){
              // this is space invaders logic, enemies 'win' when they move to bottom
                 enemy[i].life = 2;
-                GPIOB->DOUTSET31_0 = RED; // toggle PB27 (minimally intrusive debugging)
                 end = 1;    //used to end game in main if aliens win
                 Sound_Killed(); //uncomment later, seems to break the game
 
@@ -181,11 +182,19 @@ void move(void){
                 enemy[i].lasty = enemy[i].y;
                 enemy[i].x += enemy[i].vx;
                 enemy[i].y += enemy[i].vy;
+
             }
 
         }
+        if(i < NUMLASERS){
+            lasers[i].lastx = lasers[i].x;
+            lasers[i].lasty = lasers[i].y;
+            lasers[i].x += lasers[i].vx;
+            lasers[i].y += lasers[i].vy;
+         }
     }
 }
+
 
 // initialize player
 void player_init(void){
@@ -202,7 +211,7 @@ void player_init(void){
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
 // Always draw in this order: enemies->player->projectiles
 void draw(void){
-
+    //drawings for enemies that takes care of despawned enemies
     for(int i = 0; i<2; i++){
         if(enemy[i].life == 1){
             ST7735_DrawBitmap(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
@@ -220,6 +229,24 @@ void draw(void){
         }
 
     }
+    //laser drawings with same system as enemies
+    for(int i = 0; i<NUMLASERS; i++){
+            if(lasers[i].life == 1){
+                ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
+                                  lasers[i].blankimage,
+                                  lasers[i].w, lasers[i].h);
+                ST7735_DrawBitmap(lasers[i].x>>FIX, lasers[i].y>>FIX,
+                                  lasers[i].image,
+                                  lasers[i].w, lasers[i].h);
+            }
+            else if(lasers[i].life == 2){
+                ST7735_DrawBitmap(lasers[i].x>>FIX, lasers[i].y>>FIX,
+                                  lasers[i].blankimage,
+                                  lasers[i].w, lasers[i].h);
+                                  lasers[i].life = 0;
+            }
+
+        }
 
     //if(player.x>>FIX == player.lastx>>FIX) || (player.y>>FIX == player.lasty>>FIX)) might help later on
     ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
@@ -248,6 +275,11 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 //    if(lastshoot == 0) &&(shoots == 1)){
 //        laser_shoot(player.x+(9<<FIX),player.y-(8>>FIX),-16);
 //    }
+
+    if(lastshoot == 0 && shoots == 1){
+        lasers_init();
+    }
+
     lastshoot = shoots;
     selects = Select_In();
     if(selects){
