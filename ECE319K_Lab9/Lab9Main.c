@@ -87,7 +87,7 @@ typedef struct sprite sprite_t;
 // initialize sprites.
 #define NUMENEMIES 50
 sprite_t enemy[NUMENEMIES];
-#define NUMLASERS 20
+#define NUMLASERS 30
 sprite_t lasers[NUMLASERS];
 #define NUMMISSILES 20
 sprite_t missiles[NUMMISSILES];
@@ -102,26 +102,49 @@ void enemy_init(void){
         enemy[i].image = SmallEnemy10pointA;
         enemy[i].blankimage = SmallEnemy10pointAblank;
         enemy[i].vx = 0;
-        enemy[i].vy = 10; // NOTE: this is 1 pixel per frame moving DOWN.
+        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
         enemy[i].w = 16;
         enemy[i].h = 10;
     }
 }
+
+// initialize player
+void player_init(void){
+    player.x = player.lastx = 64<<FIX;
+    player.y = player.lasty = 159<<FIX;
+    player.life = 1;
+    player.image = PlayerShip0;
+    // TODO: program ship damage indicators
+    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
+    player.w = 18;
+    player.h = 8;
+}
+
+//TODO: moving forward while shooting can cause lasers to disappear. Unsure of true reason why.
 void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
     static uint8_t i = 0;
     if(i < NUMLASERS){
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-        lasers[i].x = player.x;   //start at center of player
+        lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
         lasers[i].y = player.y;
         lasers[i].image = Laser0;
         lasers[i].blankimage = eLaser0;
         lasers[i].vx = 0;
-        lasers[i].vy = -10; // NOTE: this is 1 pixel per frame moving DOWN.
+        lasers[i].vy = -20; // NOTE: -10 is 1 pixel per frame moving DOWN.
         lasers[i].w = 2;
         lasers[i].h = 9;
+        // Numlasers = 0x14 = 0001 0100
+        // Jason, your bit math doesn't work here (results in max sprite limit of 4) but I like the approach of using the label.
+        //I can't figure something out so I've done a slower approach
+        // TODO: fix this bitmath approach for free performance
+        //i = (i+1)&(NUMLASERS-1);
+        // if there are more lasers then on screen limit, take over the last laser fired
         i++;
-        i = (i+1)&(NUMLASERS-1);
+        if(i == NUMLASERS){
+            i = 0;
+        }
     }
+
 }
 
 // moves all enemies
@@ -169,8 +192,24 @@ void move(void){
         player.y = 0;
     }
 
+    // move lasers
+    for(int j = 0; j < NUMLASERS; j++){
+        if(lasers[j].life == 1){
+            if(lasers[j].y <= 0){        //if bullet is offscreen, despawn
+                lasers[j].life = 2;
+            }
+            else{
+                lasers[j].lastx = lasers[j].x;
+                lasers[j].lasty = lasers[j].y;
+                lasers[j].x += lasers[j].vx;
+                lasers[j].y += lasers[j].vy;
+            }
+        }
+    }
+    // for each enemy, check if they have reached the end.
+    // if not, move them
+    // then, for each laser, check if it has collided with an enemy
     for(int i = 0; i<NUMENEMIES; i++){
-//        for(int j = 0; j < NUMLASERS; j++){
             if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX){
                  // this is space invaders logic, enemies 'win' when they move to bottom
@@ -185,43 +224,29 @@ void move(void){
                     enemy[i].x += enemy[i].vx;
                     enemy[i].y += enemy[i].vy;
 
-                }                                   //im trying to get the hit detection to work, but basically check each bullet to each enemy and see if any overlap, and if they do then delete both the bullet and the enemy
+                }
 
-//               if(lasers[j].life == 1){
-//                   if(lasers[j].y <= 0){        //if bullet is offscreen, despawn
-//                       lasers[j].life = 2;
-//                   }
-//                   if(((lasers[j].x < enemy[i].x + 2<<FIX) || (lasers[j].x > enemy[i].x + 2<<FIX)) && (lasers[j].y == enemy[i].y)){
-//                  //check for collision with sprite and bullet
-//                       enemy[i].life = 2;
-//                       lasers[j].life = 2;
-//                       Sound_Killed();
-//                }
-//                else{
-//                    lasers[j].lastx = lasers[j].x;
-//                    lasers[j].lasty = lasers[j].y;
-//                    lasers[j].x += lasers[j].vx;
-//                    lasers[j].y += lasers[j].vy;
-//      }
-//
-//     }
-//    }
-   }
-}
+                //im trying to get the hit detection to work, but basically check each bullet to each enemy and see if any overlap,
+                //and if they do then delete both the bullet and the enemy
+               for(int j = 0; j < NUMLASERS; j++){
+                   if(lasers[j].life == 1){
+                       // recall that the 'position' of a sprite is the top left corner
+                       if(
+                       ((lasers[j].x <= (enemy[i].x + (enemy[i].w<<FIX))) && (lasers[j].x >= (enemy[i].x)))
+                               && ((lasers[j].y <= (enemy[i].y + (enemy[i].h<<FIX))) && (lasers[j].y >= (enemy[i].y)))
+
+                      ){
+                      // if collision occurred, edit some stuff
+                           enemy[i].life = 2;
+                           lasers[j].life = 2;
+                           Sound_Killed();
+                       }
+                   }
+               }
+            }
+    }
 }
 
-
-// initialize player
-void player_init(void){
-    player.x = player.lastx = 64<<FIX;
-    player.y = player.lasty = 159<<FIX;
-    player.life = 1;
-    player.image = PlayerShip0;
-    // TODO: program ship damage indicators
-    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
-    player.w = 18;
-    player.h = 8;
-}
 
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
 // Always draw in this order: enemies->player->projectiles
@@ -245,6 +270,7 @@ void draw(void){
 
     }
     //laser drawings with same system as enemies
+    // TODO: handle redraw of despawned lasers (may have been fixed, let aidan test)
     for(int i = 0; i<NUMLASERS; i++){
             if(lasers[i].life == 1){
                 ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
@@ -255,7 +281,8 @@ void draw(void){
                                   lasers[i].w, lasers[i].h);
             }
             else if(lasers[i].life == 2){
-                ST7735_DrawBitmap(lasers[i].x>>FIX, lasers[i].y>>FIX,
+                // hacky fix to prevent leftover laser pixels (may break in future)
+                ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
                                   lasers[i].blankimage,
                                   lasers[i].w, lasers[i].h);
                                   lasers[i].life = 0;
@@ -284,12 +311,6 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
     // 2) read input switches
     shoots = Shoot_In();
-    // TODO: uncomment this section once a laser shoot has been added
-    // Note: this if statement prevents the player from holding down shoot and firing. I think this is a good change.
-    // Otherwise we have two options, allow shots to fire 30 times a second, or find another way to limit fire rate.
-//    if(lastshoot == 0) &&(shoots == 1)){
-//        laser_shoot(player.x+(9<<FIX),player.y-(8>>FIX),-16);
-//    }
 
     if(lastshoot == 0 && shoots == 1){
         lasers_init();
@@ -308,14 +329,14 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     click = JoyStick_InButton();
 
     // 3) move sprites and handle collisions. Multiple moves will be needed for different enemy groups.
-    move();
-    // TODO: check for collisions, incrementing score as needed or charging special attack
+    // Check for collisions, incrementing score as needed or charging special attack
     // Getting hit should subtract from health and score, also stopping a potential streak feature
     // Hitting something should add to a streak
+    // TODO: do player collisions with enemy attacks (when added)
+    move();
 
-    // 4) start sounds
-    // Jason said this wasn't needed, so I didn't write it.
-    //Sound_Start();
+    // 4) start sounds (not needed)
+
     // 5) set semaphore
     Flag = 1;
 
@@ -524,7 +545,7 @@ int main(void){ // final main
           ST7735_OutString("Nice try,");
           ST7735_SetCursor(1, 3);
           ST7735_OutString("Earthling!");
-          ST7735_SetCursor(2, 4);
+          ST7735_SetCursor(1, 4);
           ST7735_OutUDec(1234);
 
           while(1){
