@@ -120,6 +120,7 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
         lasers[i].w = 2;
         lasers[i].h = 9;
         i++;
+        i = (i+1)&(NUMLASERS-1);
     }
 }
 
@@ -169,30 +170,44 @@ void move(void){
     }
 
     for(int i = 0; i<NUMENEMIES; i++){
-        if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
-            if(enemy[i].y >= 157<<FIX){
-             // this is space invaders logic, enemies 'win' when they move to bottom
-                enemy[i].life = 2;
-                end = 1;    //used to end game in main if aliens win
-                Sound_Killed(); //uncomment later, seems to break the game
+//        for(int j = 0; j < NUMLASERS; j++){
+            if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
+                if(enemy[i].y >= 157<<FIX){
+                 // this is space invaders logic, enemies 'win' when they move to bottom
+                    enemy[i].life = 2;
+                    end = 1;    //used to end game in main if aliens win
+                    Sound_Killed(); //uncomment later, seems to break the game
 
-            }
-            else{
-                enemy[i].lastx = enemy[i].x;
-                enemy[i].lasty = enemy[i].y;
-                enemy[i].x += enemy[i].vx;
-                enemy[i].y += enemy[i].vy;
+                }
+                else{       //else move enemies
+                    enemy[i].lastx = enemy[i].x;
+                    enemy[i].lasty = enemy[i].y;
+                    enemy[i].x += enemy[i].vx;
+                    enemy[i].y += enemy[i].vy;
 
-            }
+                }                                   //im trying to get the hit detection to work, but basically check each bullet to each enemy and see if any overlap, and if they do then delete both the bullet and the enemy
 
-        }
-        if(i < NUMLASERS){
-            lasers[i].lastx = lasers[i].x;
-            lasers[i].lasty = lasers[i].y;
-            lasers[i].x += lasers[i].vx;
-            lasers[i].y += lasers[i].vy;
-         }
-    }
+//               if(lasers[j].life == 1){
+//                   if(lasers[j].y <= 0){        //if bullet is offscreen, despawn
+//                       lasers[j].life = 2;
+//                   }
+//                   if(((lasers[j].x < enemy[i].x + 2<<FIX) || (lasers[j].x > enemy[i].x + 2<<FIX)) && (lasers[j].y == enemy[i].y)){
+//                  //check for collision with sprite and bullet
+//                       enemy[i].life = 2;
+//                       lasers[j].life = 2;
+//                       Sound_Killed();
+//                }
+//                else{
+//                    lasers[j].lastx = lasers[j].x;
+//                    lasers[j].lasty = lasers[j].y;
+//                    lasers[j].x += lasers[j].vx;
+//                    lasers[j].y += lasers[j].vy;
+//      }
+//
+//     }
+//    }
+   }
+}
 }
 
 
