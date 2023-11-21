@@ -149,7 +149,7 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
 
 // moves all enemies
 void move(void){
-    // Sample the joystick (done twice)
+    // Sample the joystick
     JoyStick_In(&XData,&YData); // XData is 0 to 4095, higher is more to the left
                                 // YData is 0 to 4095, higher is further up
 
@@ -226,8 +226,7 @@ void move(void){
 
                 }
 
-                //im trying to get the hit detection to work, but basically check each bullet to each enemy and see if any overlap,
-                //and if they do then delete both the bullet and the enemy
+
                for(int j = 0; j < NUMLASERS; j++){
                    if(lasers[j].life == 1){
                        // recall that the 'position' of a sprite is the top left corner
@@ -243,6 +242,13 @@ void move(void){
                        }
                    }
                }
+
+               // TODO: check if player has hit enemy.
+               // TODO: invincibility frames? kill enemy? a lot of options.
+
+
+
+
             }
     }
 }
@@ -251,6 +257,9 @@ void move(void){
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
 // Always draw in this order: enemies->player->projectiles
 void draw(void){
+
+    // TODO: add background image (in ROM)
+    // TODO: implement background image code (copy frame buffer)
     //drawings for enemies that takes care of despawned enemies
     for(int i = 0; i<2; i++){
         if(enemy[i].life == 1){
