@@ -112,10 +112,10 @@ void enemy_init(void){
 void player_init(void){
     player.x = player.lastx = 64<<FIX;
     player.y = player.lasty = 159<<FIX;
-    player.life = 1;
+    player.life = 1; // 1 is 3/3 hp, 2 is 2/3 hp, 3 is 1/3 hp, 4 is dying, 5 is dead (despawned)
     player.image = PlayerShip0;
     // TODO: program ship damage indicators
-    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate.
+    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate. WRONG
     player.w = 18;
     player.h = 8;
 }
@@ -146,6 +146,35 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
     }
 
 }
+
+// uses the player's life to update PCB LEDs
+void ledstatus(void){
+    switch(player.life){
+    case 1:
+        LED_On(LEFT);
+        LED_Off(MID);
+        LED_Off(RIGHT);
+        break;
+    case 2:
+        LED_Off(LEFT);
+        LED_On(MID);
+        LED_Off(RIGHT);
+        break;
+    case 3:
+        LED_Off(LEFT);
+        LED_Off(MID);
+        LED_On(RIGHT);
+    case 4:
+        LED_Off(LEFT);
+        LED_Off(MID);
+        LED_Off(RIGHT);
+        break;
+    default:
+        break;
+    }
+}
+
+void collisions(void);
 
 // moves all enemies
 void move(void){
@@ -206,9 +235,9 @@ void move(void){
             }
         }
     }
-    // for each enemy, check if they have reached the end.
-    // if not, move them
-    // then, for each laser, check if it has collided with an enemy
+
+    // move enemies, then run collision checks
+    // TODO: what if multiple hit on the same enemy occur? I don't think this would break anything at the moment.
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX){
@@ -235,7 +264,7 @@ void move(void){
                                && ((lasers[j].y <= (enemy[i].y + (enemy[i].h<<FIX))) && (lasers[j].y >= (enemy[i].y)))
 
                       ){
-                      // if collision occurred, edit some stuff
+                      // if collision occurred, kill the enemy
                            enemy[i].life = 2;
                            lasers[j].life = 2;
                            Sound_Killed();
@@ -243,16 +272,29 @@ void move(void){
                    }
                }
 
-               // TODO: check if player has hit enemy.
-               // TODO: invincibility frames? kill enemy? a lot of options.
+               // TODO: square distance approximation doesn't feel right just yet, but it works more or less
+               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) < 300<<FIX){
+                   enemy[i].life = 2;
+                   //TODO: implement life system
+                   player.life = 2;
+                   // TODO: replace with hurt sound
+                   Sound_Killed();
+               }
+               // TODO: invincibility frames after hit? Right now it just kills the enemy which can result in abuse.
 
 
+               // represent player status with onboard LEDs
+               ledstatus();
 
 
             }
     }
 }
 
+// TODO: run all collision checks in this method, it won't have a void parameter type when finished.
+//void collisions(void){
+//
+//}
 
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
 // Always draw in this order: enemies->player->projectiles
@@ -300,10 +342,11 @@ void draw(void){
         }
 
     //if(player.x>>FIX == player.lastx>>FIX) || (player.y>>FIX == player.lasty>>FIX)) might help later on
-    ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
-                      player.blankimage,
-                      player.w, player.h);
-
+    if((player.x>>FIX != player.lastx>>FIX) || (player.y>>FIX != player.lasty>>FIX)){
+        ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
+                          player.blankimage,
+                          player.w, player.h);
+    }
     ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
                       player.image,
                       player.w, player.h);
