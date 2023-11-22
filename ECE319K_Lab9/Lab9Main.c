@@ -76,6 +76,8 @@ struct sprite{
     int32_t lastx,lasty; // used to avoid sprite flicker
     uint32_t health;
     const uint16_t *image; // the default image for the sprite
+    const uint16_t *twohp;
+    const uint16_t *onehp;
     const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
     // TODO: more image pointers as needed for animation frames, other status values
     int32_t w,h; // the width and height of the sprite
@@ -114,8 +116,10 @@ void player_init(void){
     player.y = player.lasty = 159<<FIX;
     player.life = 1; // 1 is 3/3 hp, 2 is 2/3 hp, 3 is 1/3 hp, 4 is dying, 5 is dead (despawned)
     player.image = PlayerShip0;
-    // TODO: program ship damage indicators
-    player.blankimage = PlayerShip4; // 4 represents a dead ship, states 1-3 are intermediate. WRONG
+    player.twohp = PlayerShip1;
+    player.onehp = PlayerShip3;
+    // TODO: add a ship explosion graphic
+    player.blankimage = PlayerShip4;
     player.w = 18;
     player.h = 8;
 }
@@ -164,6 +168,7 @@ void ledstatus(void){
         LED_Off(LEFT);
         LED_Off(MID);
         LED_On(RIGHT);
+        break;
     case 4:
         LED_Off(LEFT);
         LED_Off(MID);
@@ -273,10 +278,10 @@ void move(void){
                }
 
                // TODO: square distance approximation doesn't feel right just yet, but it works more or less
-               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) < 300<<FIX){
+               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)){
                    enemy[i].life = 2;
                    //TODO: implement life system
-                   player.life = 2;
+                   player.life++;
                    // TODO: replace with hurt sound
                    Sound_Killed();
                }
@@ -321,7 +326,6 @@ void draw(void){
 
     }
     //laser drawings with same system as enemies
-    // TODO: handle redraw of despawned lasers (may have been fixed, let aidan test)
     for(int i = 0; i<NUMLASERS; i++){
             if(lasers[i].life == 1){
                 ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
@@ -341,15 +345,40 @@ void draw(void){
 
         }
 
-    //if(player.x>>FIX == player.lastx>>FIX) || (player.y>>FIX == player.lasty>>FIX)) might help later on
+    // draw the player with appropriate damage levels
     if((player.x>>FIX != player.lastx>>FIX) || (player.y>>FIX != player.lasty>>FIX)){
         ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
                           player.blankimage,
                           player.w, player.h);
     }
-    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                      player.image,
-                      player.w, player.h);
+
+    switch(player.life){
+        case 1:
+            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                                  player.image,
+                                  player.w, player.h);
+            break;
+        case 2:
+            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                                  player.twohp,
+                                  player.w, player.h);
+            break;
+        case 3:
+            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                                  player.onehp,
+                                  player.w, player.h);
+            break;
+        case 4:
+            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                                  player.blankimage,
+                                  player.w, player.h);
+            break;
+        default:
+            break;
+        }
+
+
+
 }
 
 
