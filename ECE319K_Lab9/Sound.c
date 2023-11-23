@@ -74,7 +74,6 @@ void Sound_Explosion(void){
     ptsound = explosion;
     soundsize = 2000;
     SysTick->LOAD = 80000000/11025-1;
-
 }
 
 void Sound_Fastinvader1(void){

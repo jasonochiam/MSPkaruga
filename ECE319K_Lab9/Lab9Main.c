@@ -33,19 +33,27 @@
 #define RIGHT 1<<28
 #define FIX 3
 
+// misc defines
+#define NUMCOLORS 2
+#define NUMHP 4
+
 uint32_t Flag = 0; // Semaphore
 uint32_t Language; // 0 for english, 1 para español
-uint32_t XData; // Variable that holds X position of stick
-uint32_t YData; // Variable that holds Y position of stick
-int32_t x;
-int32_t y;
-uint32_t shoots;
-uint32_t lastshoot;
-uint32_t selects;
-uint32_t swaps;
-uint32_t ups;
-uint32_t click;
-uint8_t end = 0;
+uint32_t XData; // Variable that holds X position of stick. Units: 0-4095
+uint32_t YData; // Variable that holds Y position of stick. Units: 0-4095
+int32_t x; // Signed version of XData, needed to work with drivers
+int32_t y; // Signed version of YData, needed to work with drivers
+uint32_t shoots; // holds the left button input for this frame
+uint32_t lastshoot; // holds the left button input for the last frame
+uint32_t selects; // holds the right button input for this frame
+uint32_t swaps; // holds the bottom button input the this frame
+uint32_t lastswaps; // holds the bottom button input for the last frame
+uint32_t ups; // holds the top button input for this frame
+uint32_t lastups; // holds the top button input for the last frame
+uint32_t click; // holds the joystick click for this frame
+uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
+uint32_t score; // the score for the level. Units: points
+uint8_t end = 0; // indicates if the player has lost the game (1 yes, 0 not yet)
 
 
 
@@ -70,23 +78,24 @@ uint32_t Random(uint32_t n){
 
 // Sprite structure
 struct sprite{
-    uint32_t life; // 0 dead, 1 alive, 2 is dying
-    uint32_t color; // 0 is blue, 1 is red (use this for checking bullet-player collisions AFTER you know a hit has occurred)
-    int32_t x,y; // positive lower left corner
-    int32_t lastx,lasty; // used to avoid sprite flicker
-    uint32_t health;
-    const uint16_t *image; // the default image for the sprite
-    const uint16_t *twohp;
-    const uint16_t *onehp;
+    uint32_t life; // 0 dead, 1 alive, 2 is dying (will replace with 0 dead, 1 dying, >1 alive)
+    uint32_t color; // 0 is green, 1 is yellow (use this for checking bullet-player collisions AFTER you know a hit has occurred)
+    uint32_t type; // used to determine enemies. 0 is basic enemy (no shots), 1 fires lasers straight down periodically, 2 fires lasers toward enemy. This number can be used as an index to select a sprite too.
+    int32_t x,y; // positive lower left corner. Units: pixels>>FIX
+    int32_t lastx,lasty; // used to avoid sprite flicker. Units: pixels>>FIX
+    const uint16_t *redimage;
+    const uint16_t *greenimage;
+    const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
+    const uint16_t *image2; // the default image for the sprite, in cases where I haven't implemented multiple damage images
     const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
+    const uint16_t *swapanimation; // points to swap animation frames for the player
     // TODO: more image pointers as needed for animation frames, other status values
-    int32_t w,h; // the width and height of the sprite
-    int32_t vx,vy; // the velocity of the sprite
+    int32_t w,h; // the width and height of the sprite. Units: pixels
+    int32_t vx,vy; // the velocity of the sprite. Units: pixels>>FIX per second
 };
 
 typedef struct sprite sprite_t;
 
-// initialize sprites.
 #define NUMENEMIES 50
 sprite_t enemy[NUMENEMIES];
 #define NUMLASERS 30
@@ -98,48 +107,84 @@ sprite_t player;
 // Enemy pattern, spawns two small enemies at the top of the screen.
 void enemy_init(void){
     for(int i = 0; i<2; i++){
-        enemy[i].life = 1;
+        enemy[i].life = 2; // spawn an enemy at (n-1) hp
         enemy[i].x = (32+32*i)<<FIX;
         enemy[i].y = 10<<FIX;
-        enemy[i].image = SmallEnemy10pointA;
+        enemy[i].image2 = SmallEnemy10pointA;
         enemy[i].blankimage = SmallEnemy10pointAblank;
         enemy[i].vx = 0;
-        enemy[i].vy = 1; // NOTE: this is 1 pixel per frame moving DOWN.
+        enemy[i].vy = 1; // NOTE: this is 1<<FIX pixel per frame moving DOWN.
         enemy[i].w = 16;
         enemy[i].h = 10;
     }
 }
 
+void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+// search the enemy array for an un-spawned enemy
+    for(int i = 0; i<NUMENEMIES; i++){
+        // set the first one you find to all the input parameters
+        if(enemy[i].life == 0){
+            enemy[i].life = hp+1; // effective starting hp values
+            enemy[i].color = color;
+            enemy[i].x = x;
+            enemy[i].y = y;
+            enemy[i].image2 = SmallEnemy10pointA;
+            enemy[i].blankimage = SmallEnemy10pointAblank;
+            enemy[i].vx = vx;
+            enemy[i].vy = vy;
+            enemy[i].w = 16;
+            enemy[i].h = 10;
+            break;
+        }
+
+    }
+    // if it is full, do nothing
+}
+
+//////TODO: takes in an enemy index and the associated enemy parameters, along with desired shot type. Spawns the requested shot
+//void enemyshoot(x,y,img,type,w,h,vx,vy,aim){
+////// search missile array for a dead missile
+//
+//}
+
+
 // initialize player
+// WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
+// TODO: fix player hp system
 void player_init(void){
     player.x = player.lastx = 64<<FIX;
     player.y = player.lasty = 159<<FIX;
-    player.life = 1; // 1 is 3/3 hp, 2 is 2/3 hp, 3 is 1/3 hp, 4 is dying, 5 is dead (despawned)
-    player.image = PlayerShip0;
-    player.twohp = PlayerShip1;
-    player.onehp = PlayerShip3;
+    player.life = 0; // 0 is 3/3 hp, 1 is 2/3 hp, 2 is 1/3 hp, 3 is dying, 4 is dead (despawned)
+    player.image[0][0] = PlayerShip0;
+    player.image[0][1] = PlayerShip1;
+    player.image[0][2] = PlayerShip3;
+    player.image[0][3] = PlayerShip4;
+    player.image[1][0] = PlayerShipYellow0;
+    player.image[1][1] = PlayerShipYellow1;
+    player.image[1][2] = PlayerShipYellow3;
+    player.image[1][3] = PlayerShip4;
     // TODO: add a ship explosion graphic
+    // TODO: add swap animation frames
     player.blankimage = PlayerShip4;
     player.w = 18;
     player.h = 8;
 }
 
-//TODO: moving forward while shooting can cause lasers to disappear. Unsure of true reason why.
 void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
     static uint8_t i = 0;
     if(i < NUMLASERS){
+        // TODO: fix this
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
         lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
         lasers[i].y = player.y;
-        lasers[i].image = Laser0;
+        lasers[i].color = player.color;
+        lasers[i].image[0][0] = LaserGreen0;
+        lasers[i].image[1][0] = LaserYellow0;
         lasers[i].blankimage = eLaser0;
         lasers[i].vx = 0;
         lasers[i].vy = -20; // NOTE: -10 is 1 pixel per frame moving DOWN.
         lasers[i].w = 2;
         lasers[i].h = 9;
-        // Numlasers = 0x14 = 0001 0100
-        // Jason, your bit math doesn't work here (results in max sprite limit of 4) but I like the approach of using the label.
-        //I can't figure something out so I've done a slower approach
         // TODO: fix this bitmath approach for free performance
         //i = (i+1)&(NUMLASERS-1);
         // if there are more lasers then on screen limit, take over the last laser fired
@@ -154,22 +199,22 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
 // uses the player's life to update PCB LEDs
 void ledstatus(void){
     switch(player.life){
-    case 1:
+    case 0:
         LED_On(LEFT);
         LED_Off(MID);
         LED_Off(RIGHT);
         break;
-    case 2:
+    case 1:
         LED_Off(LEFT);
         LED_On(MID);
         LED_Off(RIGHT);
         break;
-    case 3:
+    case 2:
         LED_Off(LEFT);
         LED_Off(MID);
         LED_On(RIGHT);
         break;
-    case 4:
+    case 3:
         LED_Off(LEFT);
         LED_Off(MID);
         LED_Off(RIGHT);
@@ -180,6 +225,15 @@ void ledstatus(void){
 }
 
 void collisions(void);
+
+
+void changecolor(void){
+    player.color++;
+    //player.color &= 0x1;
+    if(player.color > 1){
+        player.color = 0;
+    }
+}
 
 // moves all enemies
 void move(void){
@@ -244,10 +298,11 @@ void move(void){
     // move enemies, then run collision checks
     // TODO: what if multiple hit on the same enemy occur? I don't think this would break anything at the moment.
     for(int i = 0; i<NUMENEMIES; i++){
-            if(enemy[i].life == 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
+            if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX){
                  // this is space invaders logic, enemies 'win' when they move to bottom
-                    enemy[i].life = 2;
+//                    enemy[i].life = 2;
+                    enemy[i].life = 1;
                     end = 1;    //used to end game in main if aliens win
                     Sound_Killed(); //uncomment later, seems to break the game
 
@@ -270,26 +325,24 @@ void move(void){
 
                       ){
                       // if collision occurred, kill the enemy
-                           enemy[i].life = 2;
+                           enemy[i].life--;
                            lasers[j].life = 2;
-                           Sound_Killed();
+                           Sound_Explosion();
                        }
                    }
                }
 
                // TODO: square distance approximation doesn't feel right just yet, but it works more or less
                if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)){
-                   enemy[i].life = 2;
-                   //TODO: implement life system
+                   // get rid of line below when i-frames are added
+                   enemy[i].life = 1;
                    player.life++;
-                   // TODO: replace with hurt sound
-                   Sound_Killed();
+                   if(player.life == 3){
+                       end = 1;
+                   }
+                   Sound_Explosion();
                }
-               // TODO: invincibility frames after hit? Right now it just kills the enemy which can result in abuse.
-
-
-               // represent player status with onboard LEDs
-               ledstatus();
+               // TODO: invincibility frames after hit? Right now it just kills the enemy which can result in abuse
 
 
             }
@@ -302,37 +355,39 @@ void move(void){
 //}
 
 // draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
-// Always draw in this order: enemies->player->projectiles
+// Always draw in this order: enemies->->player->projectiles
 void draw(void){
 
     // TODO: add background image (in ROM)
     // TODO: implement background image code (copy frame buffer)
     //drawings for enemies that takes care of despawned enemies
-    for(int i = 0; i<2; i++){
-        if(enemy[i].life == 1){
+    for(int i = 0; i<NUMENEMIES; i++){
+        if(enemy[i].life > 1){
             ST7735_DrawBitmap(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
                                           enemy[i].blankimage,
                                           enemy[i].w, enemy[i].h);
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
-                              enemy[i].image,
+                              enemy[i].image2,
                               enemy[i].w, enemy[i].h);
         }
-        else if(enemy[i].life == 2){
+        else if(enemy[i].life == 1){
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].blankimage,
                               enemy[i].w, enemy[i].h);
-                              enemy[i].life = 0;
+            enemy[i].life = 0;
         }
 
     }
+
     //laser drawings with same system as enemies
     for(int i = 0; i<NUMLASERS; i++){
             if(lasers[i].life == 1){
                 ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
                                   lasers[i].blankimage,
                                   lasers[i].w, lasers[i].h);
+
                 ST7735_DrawBitmap(lasers[i].x>>FIX, lasers[i].y>>FIX,
-                                  lasers[i].image,
+                                  lasers[i].image[lasers[i].color][0],
                                   lasers[i].w, lasers[i].h);
             }
             else if(lasers[i].life == 2){
@@ -343,7 +398,7 @@ void draw(void){
                                   lasers[i].life = 0;
             }
 
-        }
+    }
 
     // draw the player with appropriate damage levels
     if((player.x>>FIX != player.lastx>>FIX) || (player.y>>FIX != player.lasty>>FIX)){
@@ -352,33 +407,9 @@ void draw(void){
                           player.w, player.h);
     }
 
-    switch(player.life){
-        case 1:
-            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                                  player.image,
-                                  player.w, player.h);
-            break;
-        case 2:
-            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                                  player.twohp,
-                                  player.w, player.h);
-            break;
-        case 3:
-            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                                  player.onehp,
-                                  player.w, player.h);
-            break;
-        case 4:
-            ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                                  player.blankimage,
-                                  player.w, player.h);
-            break;
-        default:
-            break;
-        }
-
-
-
+    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
+                                      player.image[player.color][player.life],
+                                      player.w, player.h);
 }
 
 
@@ -393,32 +424,51 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     // 2) read input switches
     shoots = Shoot_In();
 
+    // optional hold down to shoot mode with shot limit
+//    if(shoots == 1 && timer-lastshoot > 5){
+//        lasers_init();
+//        lastshoot = timer;
+//    }
     if(lastshoot == 0 && shoots == 1){
         lasers_init();
     }
-
     lastshoot = shoots;
+
     selects = Select_In();
     if(selects){
         Language = (Language+1)&(0x1);
     }
-    // TODO: player color swap logic here
-    swaps = Swap_In();
-    // TODO: figure out what up will do, if anything.
+
     ups = Up_In();
-    // TODO: figure out screen clear move
+    swaps = Swap_In();
+    if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1)){
+        changecolor();
+    }
+    lastswaps = swaps;
+    lastups = ups;
+
+    // TODO: figure out screen clear move (if at all)
+    // basically if click and some condition about how many shots the player has absorbed, set all enemy lives to 0 EXCEPT boss types if we have them
     click = JoyStick_InButton();
 
     // 3) move sprites and handle collisions. Multiple moves will be needed for different enemy groups.
     // Check for collisions, incrementing score as needed or charging special attack
     // Getting hit should subtract from health and score, also stopping a potential streak feature
     // Hitting something should add to a streak
-    // TODO: do player collisions with enemy attacks (when added)
+    // TODO: add color based collisions
     move();
+    // represent player status with onboard LEDs
+    ledstatus();
 
     // 4) start sounds (not needed)
 
-    // 5) set semaphore
+    // 5) increment in game clock
+    timer++;
+    if(timer%60 == 0){
+        spawnsmallenemy(32<<FIX,10<<FIX,0,1<<FIX,1,0);
+        spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,0);
+    }
+    // 6) set semaphore
     Flag = 1;
 
     // NO LCD OUTPUT IN INTERRUPT SERVICE ROUTINES
@@ -601,7 +651,7 @@ int main(void){ // final main
   Switch_Init(); // initialize switches
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
-  enemy_init();
+//  enemy_init(); for testing
   player_init();
   TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26 USE FOR DEBUGGING?
   // initialize interrupts on TimerG12 at 30 Hz
@@ -619,14 +669,20 @@ int main(void){ // final main
 
     if(end){
         TIMG12->CPU_INT.IMASK = 0; // zero event mask
+        LED_Off(LEFT);
+        LED_Off(MID);
+        LED_On(RIGHT);
         ST7735_FillScreen(0x0000);   // set screen to black
-          ST7735_SetCursor(1, 1);
+          ST7735_SetCursor(6, 1);
           ST7735_OutString("GAME OVER");
-          ST7735_SetCursor(1, 2);
-          ST7735_OutString("Nice try,");
           ST7735_SetCursor(1, 3);
-          ST7735_OutString("Earthling!");
+          ST7735_OutString("Status: ");
+          // TODO: say victory or missing in action depending on flags
+          ST7735_OutString("Missing in");
           ST7735_SetCursor(1, 4);
+          ST7735_OutString("Action");
+          ST7735_SetCursor(1, 6);
+          ST7735_OutString("Score:");
           ST7735_OutUDec(1234);
 
           while(1){
