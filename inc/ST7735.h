@@ -222,14 +222,14 @@ enum initRFlags{
  */
 #define ST7735_TFTHEIGHT 160
 
-
+// 0001 1001 1110 1001
 /**
  * \brief The following constants are possible colors for the LCD in RGB format
  */
 #define ST7735_BLACK   0x0000
-#define ST7735_BLUE    0xF800
-#define ST7735_RED     0x001F
-#define ST7735_GREEN   0x07E0
+#define ST7735_BLUE    0xF800 // 1111 1000 0000 0000
+#define ST7735_RED     0x001F // 0000 0000 0001 1111
+#define ST7735_GREEN   0x07E0 // 0000 0111 1110 0000
 #define ST7735_CYAN    0xFFE0
 #define ST7735_MAGENTA 0xF81F
 #define ST7735_YELLOW  0x07FF

@@ -128,6 +128,8 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].color = color;
             enemy[i].x = x;
             enemy[i].y = y;
+            enemy[i].image[0][0] = SmallEnemy10pointGreenA;
+            enemy[i].image[1][0] = SmallEnemy10pointYellowA;
             enemy[i].image2 = SmallEnemy10pointA;
             enemy[i].blankimage = SmallEnemy10pointAblank;
             enemy[i].vx = vx;
@@ -324,10 +326,15 @@ void move(void){
                                && ((lasers[j].y <= (enemy[i].y + (enemy[i].h<<FIX))) && (lasers[j].y >= (enemy[i].y)))
 
                       ){
-                      // if collision occurred, kill the enemy
-                           enemy[i].life--;
+                      // if collision occurred and color matched, kill the enemy. In all collisions despawn sprite.
+                           if(lasers[j].color == enemy[i].color){
+                               enemy[i].life--;
+                               //TODO: dink sound?
+                           }
+                           else{
+                               Sound_Explosion();
+                           }
                            lasers[j].life = 2;
-                           Sound_Explosion();
                        }
                    }
                }
@@ -367,7 +374,7 @@ void draw(void){
                                           enemy[i].blankimage,
                                           enemy[i].w, enemy[i].h);
             ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
-                              enemy[i].image2,
+                              enemy[i].image[enemy[i].color][0],
                               enemy[i].w, enemy[i].h);
         }
         else if(enemy[i].life == 1){
@@ -466,7 +473,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     timer++;
     if(timer%60 == 0){
         spawnsmallenemy(32<<FIX,10<<FIX,0,1<<FIX,1,0);
-        spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,0);
+        spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,1);
     }
     // 6) set semaphore
     Flag = 1;
