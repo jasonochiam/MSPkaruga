@@ -104,7 +104,7 @@ sprite_t lasers[NUMLASERS];
 sprite_t missiles[NUMMISSILES];
 sprite_t player;
 
-// Enemy pattern, spawns two small enemies at the top of the screen.
+// Enemy pattern, spawns two small enemies at the top of the screen. Not using in final game!
 void enemy_init(void){
     for(int i = 0; i<2; i++){
         enemy[i].life = 2; // spawn an enemy at (n-1) hp
