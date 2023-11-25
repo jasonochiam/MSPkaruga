@@ -39,7 +39,7 @@
 
 //Flags
 uint32_t Flag = 0; // Semaphore
-uint32_t Language; // 0 for english, 1 para español
+uint32_t Language; // 0 for english, 1 para espaï¿½ol
 uint32_t title; // flag to indicate if the game has gone past the title screen.
 
 // Inputs
@@ -93,6 +93,7 @@ struct sprite{
     uint32_t type; // used to determine enemies. 0 is basic enemy (no shots), 1 fires lasers straight down periodically, 2 fires lasers toward enemy. This number can be used as an index to select a sprite too.
     int32_t x,y; // positive lower left corner. Units: pixels>>FIX
     int32_t lastx,lasty; // used to avoid sprite flicker. Units: pixels>>FIX
+    uint8_t enemyl;   //checks for laser time, 0 for player, 1 for enemy
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
@@ -114,7 +115,7 @@ sprite_t lasers[NUMLASERS];
 sprite_t missiles[NUMMISSILES];
 sprite_t player;
 
-// Enemy pattern, spawns two small enemies at the top of the screen.
+// Enemy pattern, spawns two small enemies at the top of the screen. Not using in final game!
 void enemy_init(void){
     for(int i = 0; i<2; i++){
         enemy[i].life = 2; // spawn an enemy at (n-1) hp
@@ -127,6 +128,34 @@ void enemy_init(void){
         enemy[i].w = 16;
         enemy[i].h = 10;
     }
+}
+
+
+void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+    static uint8_t i = 0;
+    if(i < NUMLASERS){
+        // TODO: fix this
+        lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+        lasers[i].x = enemy.x;   //start at center of player
+        lasers[i].y = enemy.y + (32<<FIX);
+        lasers[i].color = enemy.color;
+        lasers[i].image[0][0] = GreenBall;
+        lasers[i].image[1][0] = YellowBall;
+        lasers[i].blankimage = eBall;
+        lasers[i].vx = 0;
+        lasers[i].vy = 3<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
+        lasers[i].w = 14;
+        lasers[i].h = 14;
+        lasers[i].enemyl = 1;
+        // TODO: fix this bitmath approach for free performance
+        //i = (i+1)&(NUMLASERS-1);
+        // if there are more lasers then on screen limit, take over the last laser fired
+        i++;
+        if(i == NUMLASERS){
+            i = 0;
+        }
+    }
+
 }
 
 void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
@@ -146,6 +175,8 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].vy = vy;
             enemy[i].w = 16;
             enemy[i].h = 10;
+            enemy[i].type = Random(10) & 3;
+            enemylaser(enemy[i]);
             break;
         }
 
@@ -197,6 +228,8 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
         lasers[i].h = 9;
         lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
         lasers[i].y = player.y-lasers[i].h;
+        lasers[i].enemyl = 0;       //type = player bullets
+
         // TODO: fix this bitmath approach for free performance
         //i = (i+1)&(NUMLASERS-1);
         // if there are more lasers then on screen limit, take over the last laser fired
@@ -207,6 +240,7 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
     }
 
 }
+
 
 // uses the player's life to update PCB LEDs
 void ledstatus(void){
@@ -295,7 +329,7 @@ void move(void){
     // move lasers
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
-            if(lasers[j].y <= 0){        //if bullet is offscreen, despawn
+            if(lasers[j].y <= 0 || lasers[j].y >= 157<<FIX){        //if bullet is offscreen, despawn
                 lasers[j].life = 2;
             }
             else{
@@ -316,7 +350,7 @@ void move(void){
 //                    enemy[i].life = 2;
                     enemy[i].life = 1;
                     end = 1;    //used to end game in main if aliens win
-                    Sound_Killed(); //uncomment later, seems to break the game
+                    Sound_Killed();
 
                 }
                 else{       //else move enemies
@@ -337,15 +371,28 @@ void move(void){
 
                       ){
                       // if collision occurred and color matched, kill the enemy. In all collisions despawn sprite.
-                           if(lasers[j].color == enemy[i].color){
+                           if(lasers[j].color == enemy[i].color && lasers[j].enemyl == 0){
                                enemy[i].life--;
                                //TODO: dink sound?
+
                            }
                            else{
                                Sound_Explosion();
                            }
-                           lasers[j].life = 2;
+                           if(lasers[j].enemyl == 0){       //if laser type is player and laser hits enemy
+                               lasers[j].life = 2;
+                           }
                        }
+                       if((player.x-lasers[j].x)*(player.x-lasers[j].x)+(player.y-lasers[j].y)*(player.y-lasers[j].y) <= (500<<FIX)){
+                                              // checking for enemy bullet collision with player
+                                              // TODO: add checking for both bullet type and color
+                                              player.life++;
+                                              lasers[j].life = 2;
+                                              if(player.life == 3){
+                                                  end = 1;
+                                              }
+                                              Sound_Explosion();
+                                          }
                    }
                }
 

@@ -53,7 +53,7 @@ void SysTick_Handler(void){ // called at 11 kHz
 //        count is the length of the array
 // Output: none
 // special cases: as you wish to implement
-void Sound_Start(){        //probably wont need to do, as its done in the individual sound functions
+void Sound_Start(){        //not needed, as its done in the individual sound functions
     //SysTick->LOAD = 80000000/11025-1;
 }
 void Sound_Shoot(void){
