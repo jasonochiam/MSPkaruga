@@ -37,8 +37,12 @@
 #define NUMCOLORS 2
 #define NUMHP 4
 
+//Flags
 uint32_t Flag = 0; // Semaphore
 uint32_t Language; // 0 for english, 1 para español
+uint32_t title; // flag to indicate if the game has gone past the title screen.
+
+// Inputs
 uint32_t XData; // Variable that holds X position of stick. Units: 0-4095
 uint32_t YData; // Variable that holds Y position of stick. Units: 0-4095
 int32_t x; // Signed version of XData, needed to work with drivers
@@ -51,9 +55,15 @@ uint32_t lastswaps; // holds the bottom button input for the last frame
 uint32_t ups; // holds the top button input for this frame
 uint32_t lastups; // holds the top button input for the last frame
 uint32_t click; // holds the joystick click for this frame
+
+// Game state flags
+uint32_t redrawplayer; // indicates to the render system if the player must be redrawn
 uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
 uint8_t end = 0; // indicates if the player has lost the game (1 yes, 0 not yet)
+
+// Misc
+const uint16_t *spaceptr = space; // pointer to space image
 
 
 
@@ -165,8 +175,8 @@ void player_init(void){
     player.image[1][1] = PlayerShipYellow1;
     player.image[1][2] = PlayerShipYellow3;
     player.image[1][3] = PlayerShip4;
-    // TODO: add a ship explosion graphic
-    // TODO: add swap animation frames
+    // TODO: add a ship explosion graphic?
+    // TODO: add swap animation frames if you have all the time in the world
     player.blankimage = PlayerShip4;
     player.w = 18;
     player.h = 8;
@@ -177,8 +187,6 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
     if(i < NUMLASERS){
         // TODO: fix this
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-        lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
-        lasers[i].y = player.y;
         lasers[i].color = player.color;
         lasers[i].image[0][0] = LaserGreen0;
         lasers[i].image[1][0] = LaserYellow0;
@@ -187,6 +195,8 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
         lasers[i].vy = -20; // NOTE: -10 is 1 pixel per frame moving DOWN.
         lasers[i].w = 2;
         lasers[i].h = 9;
+        lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
+        lasers[i].y = player.y-lasers[i].h;
         // TODO: fix this bitmath approach for free performance
         //i = (i+1)&(NUMLASERS-1);
         // if there are more lasers then on screen limit, take over the last laser fired
@@ -356,30 +366,56 @@ void move(void){
     }
 }
 
-// TODO: run all collision checks in this method, it won't have a void parameter type when finished.
-//void collisions(void){
-//
-//}
+// Methods related to drawing to the screen
 
-// draws all enemies, REMEMBER TO SHIFT RIGHT BY SIX
+// QUESTION: what is background? a 16 bit array of length?
+// Background is just a way to hold a temporary frame buffer, don't worry about it!
+// TODO: may be too small? Seems like it is ok
+// set to the size of your biggest sprite (w*h) (could change in future)
+uint16_t background[500];
+
+
+// all parameters are in pixels
+void Fill(int32_t x, int32_t y, int32_t xsize, int32_t ysize){
+    for(int i = 0; i<ysize; i++){
+        for(int j = 0; j<xsize; j++){
+            background[xsize*i+j] = space[(159-y+i)*128+(x+j)];
+        }
+    }
+}
+
+// x position of sprite, y position of sprite, pointer to sprite image, width of sprite, height of sprite (in pixels)
+void DrawOverSpace(int32_t x, int32_t y, const uint16_t *image, int32_t w, int32_t h){
+    //Fill(x,y,w,h);
+    for(int j=0; j<(w*h); j++){
+        uint16_t pixel = image[j];
+        if(pixel){
+            background[j] = pixel;
+        }
+    }
+    ST7735_DrawBitmap(x,y,background,w,h);
+}
+
+// use when morphing a sprite (teleport from left to right for example)
+void EraseOverSpace(int32_t x, int32_t y, int32_t w, int32_t h){
+    Fill(x,y,w,h);
+    ST7735_DrawBitmap(x,y,background,w,h);
+}
+
+// draws all alive sprites
 // Always draw in this order: enemies->->player->projectiles
 void draw(void){
-
-    // TODO: add background image (in ROM)
-    // TODO: implement background image code (copy frame buffer)
     //drawings for enemies that takes care of despawned enemies
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life > 1){
-            ST7735_DrawBitmap(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
-                                          enemy[i].blankimage,
+            EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
                                           enemy[i].w, enemy[i].h);
-            ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
+            DrawOverSpace(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].image[enemy[i].color][0],
                               enemy[i].w, enemy[i].h);
         }
         else if(enemy[i].life == 1){
-            ST7735_DrawBitmap(enemy[i].x>>FIX, enemy[i].y>>FIX,
-                              enemy[i].blankimage,
+            EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
                               enemy[i].w, enemy[i].h);
             enemy[i].life = 0;
         }
@@ -389,34 +425,29 @@ void draw(void){
     //laser drawings with same system as enemies
     for(int i = 0; i<NUMLASERS; i++){
             if(lasers[i].life == 1){
-                ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
-                                  lasers[i].blankimage,
-                                  lasers[i].w, lasers[i].h);
+                EraseOverSpace(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
+                                                  lasers[i].w, lasers[i].h);
 
-                ST7735_DrawBitmap(lasers[i].x>>FIX, lasers[i].y>>FIX,
-                                  lasers[i].image[lasers[i].color][0],
-                                  lasers[i].w, lasers[i].h);
+                DrawOverSpace(lasers[i].x>>FIX, lasers[i].y>>FIX,
+                                                  lasers[i].image[lasers[i].color][0],
+                                                  lasers[i].w, lasers[i].h);
             }
             else if(lasers[i].life == 2){
-                // hacky fix to prevent leftover laser pixels (may break in future)
-                ST7735_DrawBitmap(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
-                                  lasers[i].blankimage,
-                                  lasers[i].w, lasers[i].h);
-                                  lasers[i].life = 0;
+                  EraseOverSpace(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
+                                                    lasers[i].w, lasers[i].h);
+                                                    lasers[i].life = 0;
             }
 
     }
 
     // draw the player with appropriate damage levels
-    if((player.x>>FIX != player.lastx>>FIX) || (player.y>>FIX != player.lasty>>FIX)){
-        ST7735_DrawBitmap(player.lastx>>FIX, player.lasty>>FIX,
-                          player.blankimage,
-                          player.w, player.h);
-    }
+    // TODO: flicker, this one will be tough to solve
+    EraseOverSpace(player.lastx>>FIX, player.lasty>>FIX,
+                              player.w, player.h);
+    DrawOverSpace(player.x>>FIX, player.y>>FIX,
+                                              player.image[player.color][player.life],
+                                              player.w, player.h);
 
-    ST7735_DrawBitmap(player.x>>FIX, player.y>>FIX,
-                                      player.image[player.color][player.life],
-                                      player.w, player.h);
 }
 
 
@@ -652,7 +683,12 @@ int main(void){ // final main
   ST7735_InitPrintf();
     //note: if you colors are weird, see different options for
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
-  ST7735_FillScreen(ST7735_BLACK);
+  //ST7735_FillScreen(ST7735_BLACK);
+  //TODO: title screen logic goes here. This will allow us to avoid drawing the bg every frame.
+
+
+
+  ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit();     //PB18 = ADC1 channel 5, slidepot
   JoyStick_Init(); // Initialize stick
   Switch_Init(); // initialize switches
@@ -667,6 +703,9 @@ int main(void){ // final main
   __enable_irq();
   while(1){
     while(Flag){
+
+
+
        // update ST7735R
        draw();
        // clear semaphore
@@ -675,6 +714,7 @@ int main(void){ // final main
     }
 
     if(end){
+        // TODO: add multilanguage support (phrase arrays)
         TIMG12->CPU_INT.IMASK = 0; // zero event mask
         LED_Off(LEFT);
         LED_Off(MID);
