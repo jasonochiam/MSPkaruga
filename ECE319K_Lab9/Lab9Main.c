@@ -39,8 +39,8 @@
 
 //Flags
 uint32_t Flag = 0; // Semaphore
-uint32_t Language; // 0 for english, 1 para espa�ol
-uint32_t title; // flag to indicate if the game has gone past the title screen.
+uint32_t Language; // 0 for english, 1 for spanish
+uint32_t title = 1; // flag to indicate if the game has gone past the title screen.
 
 // Inputs
 uint32_t XData; // Variable that holds X position of stick. Units: 0-4095
@@ -50,6 +50,7 @@ int32_t y; // Signed version of YData, needed to work with drivers
 uint32_t shoots; // holds the left button input for this frame
 uint32_t lastshoot; // holds the left button input for the last frame
 uint32_t selects; // holds the right button input for this frame
+uint32_t lastselects; // holds the right button input for the last frame
 uint32_t swaps; // holds the bottom button input the this frame
 uint32_t lastswaps; // holds the bottom button input for the last frame
 uint32_t ups; // holds the top button input for this frame
@@ -58,9 +59,11 @@ uint32_t click; // holds the joystick click for this frame
 
 // Game state flags
 uint32_t redrawplayer; // indicates to the render system if the player must be redrawn
+uint32_t redrawbg; // tells the game to redraw the background (needed for title screen logic)
 uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
-uint8_t end = 0; // indicates if the player has lost the game (1 yes, 0 not yet)
+uint32_t end; // tells the game to end or not (slightly different than win)
+uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
@@ -130,8 +133,10 @@ void enemy_init(void){
     }
 }
 
+// TODO: make this
+// void enemylaser(sprite_t enemy)
 
-void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
     static uint8_t i = 0;
     if(i < NUMLASERS){
         // TODO: fix this
@@ -143,7 +148,7 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
         lasers[i].image[1][0] = YellowBall;
         lasers[i].blankimage = eBall;
         lasers[i].vx = 0;
-        lasers[i].vy = 3<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
+        lasers[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
         lasers[i].w = 14;
         lasers[i].h = 14;
         lasers[i].enemyl = 1;
@@ -155,7 +160,6 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
             i = 0;
         }
     }
-
 }
 
 void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
@@ -176,20 +180,13 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].w = 16;
             enemy[i].h = 10;
             enemy[i].type = Random(10) & 3;
-            enemylaser(enemy[i]);
+            enemyball(enemy[i]);
             break;
         }
 
     }
     // if it is full, do nothing
 }
-
-//////TODO: takes in an enemy index and the associated enemy parameters, along with desired shot type. Spawns the requested shot
-//void enemyshoot(x,y,img,type,w,h,vx,vy,aim){
-////// search missile array for a dead missile
-//
-//}
-
 
 // initialize player
 // WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
@@ -230,9 +227,6 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
         lasers[i].y = player.y-lasers[i].h;
         lasers[i].enemyl = 0;       //type = player bullets
 
-        // TODO: fix this bitmath approach for free performance
-        //i = (i+1)&(NUMLASERS-1);
-        // if there are more lasers then on screen limit, take over the last laser fired
         i++;
         if(i == NUMLASERS){
             i = 0;
@@ -417,7 +411,6 @@ void move(void){
 
 // QUESTION: what is background? a 16 bit array of length?
 // Background is just a way to hold a temporary frame buffer, don't worry about it!
-// TODO: may be too small? Seems like it is ok
 // set to the size of your biggest sprite (w*h) (could change in future)
 uint16_t background[500];
 
@@ -453,6 +446,11 @@ void EraseOverSpace(int32_t x, int32_t y, int32_t w, int32_t h){
 // Always draw in this order: enemies->->player->projectiles
 void draw(void){
     //drawings for enemies that takes care of despawned enemies
+
+    // TODO: draw score with SmallFont_OutHorizontal from the headers
+
+
+
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life > 1){
             EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
@@ -482,7 +480,7 @@ void draw(void){
             else if(lasers[i].life == 2){
                   EraseOverSpace(lasers[i].lastx>>FIX, lasers[i].lasty>>FIX,
                                                     lasers[i].w, lasers[i].h);
-                                                    lasers[i].life = 0;
+                  lasers[i].life = 0;
             }
 
     }
@@ -520,39 +518,53 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     lastshoot = shoots;
 
     selects = Select_In();
-    if(selects){
-        Language = (Language+1)&(0x1);
-    }
+    lastselects = selects;
 
     ups = Up_In();
+    if(lastups == 0 && ups == 1 && title){
+        Language = (Language+1)&(0x1);
+        redrawbg = 1;
+    }
+    lastups = ups;
+
+
+    // TODO: technically the player can swap color on title screen with the way this works right now. Not too much of an issue but just note it.
     swaps = Swap_In();
     if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1)){
         changecolor();
     }
     lastswaps = swaps;
-    lastups = ups;
 
     // TODO: figure out screen clear move (if at all)
     // basically if click and some condition about how many shots the player has absorbed, set all enemy lives to 0 EXCEPT boss types if we have them
     click = JoyStick_InButton();
 
-    // 3) move sprites and handle collisions. Multiple moves will be needed for different enemy groups.
+    // 3) move sprites and handle collisions if we're out of the title screen. Multiple moves will be needed for different enemy groups.
     // Check for collisions, incrementing score as needed or charging special attack
     // Getting hit should subtract from health and score, also stopping a potential streak feature
     // Hitting something should add to a streak
     // TODO: add color based collisions
-    move();
-    // represent player status with onboard LEDs
-    ledstatus();
+    if(!title){
+        move();
+        // represent player status with onboard LEDs
+        ledstatus();
 
-    // 4) start sounds (not needed)
+        // 4) start sounds (not needed)
 
-    // 5) increment in game clock
-    timer++;
-    if(timer%60 == 0){
-        spawnsmallenemy(32<<FIX,10<<FIX,0,1<<FIX,1,0);
-        spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,1);
+        // 5) increment in game clock
+        timer++;
+        if(timer%60 == 0){
+            spawnsmallenemy(32<<FIX,10<<FIX,0,1<<FIX,1,0);
+            spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,1);
+        }
     }
+    else{
+        if(selects){
+            title = 0;
+            redrawbg = 1;
+        }
+    }
+
     // 6) set semaphore
     Flag = 1;
 
@@ -579,6 +591,78 @@ const char Language_English[]="English";
 const char Language_Spanish[]="Espa\xA4ol";
 const char Language_Portuguese[]="Portugu\x88s";
 const char Language_French[]="Fran\x87" "ais";
+
+
+// TITLE SCREEN MESSAGES
+
+const char Title_English[] = "Switch Force";
+const char Title_Spanish[] = "Fuerza de Cambio";
+
+const char Start_English[] = "Press the right";
+const char Start_Spanish[] = "Pulsa el bot\xA2n";
+const char Start2_English[] = "button to start";
+const char Start2_Spanish[] = "derecho para jugar";
+
+const char Select_English[] = "Para Espa\xA4ol, pulsa";
+const char Select_Spanish[] = "For English, press";
+const char Language2_English[] = "el bot\xA2n arriba";
+const char Language2_Spanish[] = "up";
+
+
+const char *Title[2] = {Title_English, Title_Spanish};
+const char *Select[2] = {Select_English, Select_Spanish};
+const char *Language2[2] = {Language2_English, Language2_Spanish};
+//const char *Language3[2] = {Language3_English, Language3_Spanish};
+const char *Start[2] = {Start_English, Start_Spanish};
+const char *Start2[2] = {Start2_English, Start2_Spanish};
+
+// GAME OVER SCREEN MESSAGES
+
+const char GameOver_English[] = "Game Over";
+const char GameOver_Spanish[] = "Fin del Juego";
+
+const char Status_English[] = "Status: ";
+const char Status_Spanish[] = "Estatus: ";
+const char StatusBad1_English[] = "Missing in";
+const char StatusBad1_Spanish[] = "Falta en";
+const char StatusBad2_English[] = "Action";
+const char StatusBad2_Spanish[] = "Acci\xA2n";
+const char StatusBad3_English[] = "";
+const char StatusBad3_Spanish[] = "";
+
+
+const char StatusGood1_English[] = "Mission is";
+const char StatusGood1_Spanish[] = "Misi\xA2n";
+const char StatusGood2_English[] = "complete, awaiting";
+const char StatusGood2_Spanish[] = "completada";
+const char StatusGood3_English[] = "reassignment";
+const char StatusGood3_Spanish[] = "";
+
+const char Score_English[] = "Score:";
+const char Score_Spanish[] = "Marcador:";
+
+const char *GameOver[2] = {GameOver_English, GameOver_Spanish};
+
+const char *Status0[2] = {Status_English, Status_Spanish};
+const char *Status1[2][2] = {
+                             {StatusBad1_English, StatusBad1_Spanish},
+                             {StatusGood1_English, StatusGood1_Spanish}
+};
+const char *Status2[2][2] = {
+                             {StatusBad2_English, StatusBad2_Spanish},
+                             {StatusGood2_English, StatusGood2_Spanish}
+};
+
+const char *Status3[2][2] = {
+                             {StatusBad3_English, StatusBad3_Spanish},
+                             {StatusGood3_English, StatusGood3_Spanish}
+};
+
+
+const char *Score[2] = {Score_English, Score_Spanish};
+
+
+
 const char *Phrases[3][4]={
   {Hello_English,Hello_Spanish,Hello_Portuguese,Hello_French},
   {Goodbye_English,Goodbye_Spanish,Goodbye_Portuguese,Goodbye_French},
@@ -750,33 +834,56 @@ int main(void){ // final main
   __enable_irq();
   while(1){
     while(Flag){
+        if(title){
+            // TODO: title screen logo. If you make anything from scratch let it be this
+            if(redrawbg){
+                ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
+                redrawbg = 0;
+            }
+            ST7735_SetCursor(5-(2*Language), 1);
+            ST7735_OutString((char *)Title[Language]);
 
+            ST7735_SetCursor(1, 3);
+            ST7735_OutString((char *)Start[Language]);
+            ST7735_SetCursor(1, 4);
+            ST7735_OutString((char *)Start2[Language]);
 
-
-       // update ST7735R
-       draw();
-       // clear semaphore
-       Flag = 0;
-       // TODO: check for end game or level switch
+            ST7735_SetCursor(1, 6);
+            ST7735_OutString((char *)Select[Language]);
+            ST7735_SetCursor(1, 7);
+            ST7735_OutString((char *)Language2[Language]);
+            ST7735_SetCursor(1, 8);
+            Flag = 0;
+        }
+        else{
+            if(redrawbg){
+                ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
+                redrawbg = 0;
+            }
+            // update ST7735R with sprites
+            draw();
+            // clear semaphore
+            Flag = 0;
+        }
     }
 
     if(end){
-        // TODO: add multilanguage support (phrase arrays)
         TIMG12->CPU_INT.IMASK = 0; // zero event mask
         LED_Off(LEFT);
         LED_Off(MID);
         LED_On(RIGHT);
         ST7735_FillScreen(0x0000);   // set screen to black
-          ST7735_SetCursor(6, 1);
-          ST7735_OutString("GAME OVER");
+          ST7735_SetCursor(6-(2*Language), 1);
+          ST7735_OutString((char *)GameOver[Language]);
           ST7735_SetCursor(1, 3);
-          ST7735_OutString("Status: ");
-          // TODO: say victory or missing in action depending on flags
-          ST7735_OutString("Missing in");
+          ST7735_OutString((char *)Status0[Language]);
+          ST7735_OutString((char *)Status1[win][Language]);
           ST7735_SetCursor(1, 4);
-          ST7735_OutString("Action");
-          ST7735_SetCursor(1, 6);
-          ST7735_OutString("Score:");
+          ST7735_OutString((char *)Status2[win][Language]);
+          ST7735_SetCursor(1, 5);
+          ST7735_OutString((char *)Status3[win][Language]);
+          ST7735_SetCursor(1, 7);
+          ST7735_OutString((char *)Score[Language]);
           ST7735_OutUDec(1234);
 
           while(1){
