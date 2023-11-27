@@ -113,13 +113,15 @@ typedef struct sprite sprite_t;
 
 #define NUMENEMIES 50
 sprite_t enemy[NUMENEMIES];
-#define NUMLASERS 30
+#define NUMLASERS 50
 sprite_t lasers[NUMLASERS];
-#define NUMMISSILES 20
+#define NUMMISSILES 50
 sprite_t missiles[NUMMISSILES];
 sprite_t player;
 
 // Enemy pattern, spawns two small enemies at the top of the screen. Not using in final game!
+void enemyball(sprite_t enemy);
+
 void enemy_init(void){
     for(int i = 0; i<2; i++){
         enemy[i].life = 2; // spawn an enemy at (n-1) hp
@@ -131,30 +133,6 @@ void enemy_init(void){
         enemy[i].vy = 1; // NOTE: this is 1<<FIX pixel per frame moving DOWN.
         enemy[i].w = 16;
         enemy[i].h = 10;
-    }
-}
-
-void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
-    static uint8_t i = 0;
-    if(i < NUMLASERS){
-        lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-        lasers[i].x = enemy.x;   //start at center of player
-        lasers[i].y = enemy.y + (4<<FIX);
-        lasers[i].color = enemy.color;
-        lasers[i].image[0][0] = GreenBall;
-        lasers[i].image[1][0] = YellowBall;
-        lasers[i].blankimage = eBall;
-        // math: player x - enemy x / time to travel
-        // make x velocity sinusoidal?
-        lasers[i].vx = (player.x - enemy.x)/100;
-        lasers[i].vy = (player.y - enemy.y)/100;; // NOTE: -10 is 1 pixel per frame moving DOWN.
-        lasers[i].w = 14;
-        lasers[i].h = 14;
-        lasers[i].enemylaser = 1;
-        i++;
-        if(i == NUMLASERS){
-            i = 0;
-        }
     }
 }
 
@@ -208,11 +186,43 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
      }
  }
 
+// ENEMY SHOOT SPAWNS
+
+void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+ static uint8_t i = 0;
+ if(i < NUMMISSILES){
+     missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+     missiles[i].x = enemy.x;   //start at center of player
+     missiles[i].y = enemy.y + (4<<FIX);
+     missiles[i].color = enemy.color;
+     missiles[i].image[0][0] = GreenBall;
+     missiles[i].image[1][0] = YellowBall;
+     missiles[i].blankimage = eBall;
+     // math: player x - enemy x / time to travel
+     // make x velocity sinusoidal?
+     missiles[i].vx = (player.x - enemy.x)/100;
+     missiles[i].vy = (player.y - enemy.y)/100;; // NOTE: -10 is 1 pixel per frame moving DOWN.
+     missiles[i].w = 14;
+     missiles[i].h = 14;
+     missiles[i].enemylaser = 1;
+     i++;
+     if(i == NUMMISSILES){
+         i = 0;
+     }
+ }
+}
+
+
+// ENEMY FORMATION SPAWNS
+
 // void spawnhorizontalline()
 
 // void spawncircle()
 
 // void spawnboss()
+
+
+// PLAYER FUNCTIONS
 
 // initialize player
 // WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
@@ -234,30 +244,6 @@ void player_init(void){
     player.blankimage = PlayerShip4;
     player.w = 18;
     player.h = 8;
-}
-
-void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
-    static uint8_t i = 0;
-    if(i < NUMLASERS){
-        lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-        lasers[i].color = player.color;
-        lasers[i].image[0][0] = LaserGreen0;
-        lasers[i].image[1][0] = LaserYellow0;
-        lasers[i].blankimage = eLaser0;
-        lasers[i].vx = 0;
-        lasers[i].vy = -20; // NOTE: -10 is 1 pixel per frame moving DOWN.
-        lasers[i].w = 2;
-        lasers[i].h = 9;
-        lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
-        lasers[i].y = player.y-lasers[i].h;
-        lasers[i].enemylaser = 0;       //type = player bullets
-
-        i++;
-        if(i == NUMLASERS){
-            i = 0;
-        }
-    }
-
 }
 
 
@@ -289,8 +275,28 @@ void ledstatus(void){
     }
 }
 
-void collisions(void);
+void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
+    static uint8_t i = 0;
+    if(i < NUMLASERS){
+        lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+        lasers[i].color = player.color;
+        lasers[i].image[0][0] = LaserGreen0;
+        lasers[i].image[1][0] = LaserYellow0;
+        lasers[i].blankimage = eLaser0;
+        lasers[i].vx = 0;
+        lasers[i].vy = -20; // NOTE: -10 is 1 pixel per frame moving DOWN.
+        lasers[i].w = 2;
+        lasers[i].h = 9;
+        lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
+        lasers[i].y = player.y-lasers[i].h;
+        lasers[i].enemylaser = 0;       //type = player bullets
 
+        i++;
+        if(i == NUMLASERS){
+            i = 0;
+        }
+    }
+}
 
 void changecolor(void){
     player.color++;
@@ -361,6 +367,22 @@ void move(void){
         }
     }
 
+    // move missiles
+    for(int j = 0; j < NUMMISSILES; j++){
+        if(missiles[j].life == 1){
+            if(missiles[j].y >= 157<<FIX || missiles[j].y <= 0 || missiles[j].x >= 128<<FIX || missiles[j].x < 0){
+                //if bullet is offscreen, despawn
+                missiles[j].life = 2;
+            }
+            else{
+                missiles[j].lastx = missiles[j].x;
+                missiles[j].lasty = missiles[j].y;
+                missiles[j].x += missiles[j].vx;
+                missiles[j].y += missiles[j].vy;
+            }
+        }
+    }
+
     // move enemies, then run collision checks
     // TODO: what if multiple hit on the same enemy occur? I don't think this would break anything at the moment.
     // TODO: enemy bullets stop moving but do not despawn when their associated enemy dies. I don't like this
@@ -395,29 +417,32 @@ void move(void){
                            if(lasers[j].color == enemy[i].color && lasers[j].enemylaser == 0){
                                enemy[i].life--;
                                score += enemy[i].type*10;
-                               //TODO: dink sound?
-
                            }
                            else{
+                               //TODO: dink sound?
                                Sound_Explosion();
                            }
-                           if(lasers[j].enemylaser == 0){       //if laser type is player and laser hits enemy
-                               lasers[j].life = 2;
-                           }
+                           lasers[j].life = 2;
                        }
-                       if((player.x-lasers[j].x)*(player.x-lasers[j].x)+(player.y-lasers[j].y)*(player.y-lasers[j].y) <= (500<<FIX)
-                               && (player.color != lasers[j].color)
-                               && (lasers[j].enemylaser)){
-                                              // checking for enemy bullet collision with player
-                                              // TODO: add checking for both bullet type and color
-                                              player.life++;
-                                              lasers[j].life = 2;
-                                              if(player.life == 3){
-                                                  end = 1;
-                                              }
-                                              Sound_Explosion();
-                                          }
                    }
+               }
+
+               // Enemy missile on player collisions
+               for(int u = 0; u<NUMMISSILES; u++){
+                   if(missiles[u].life == 1){
+                      // recall that the 'position' of a sprite is the top left corner
+                      if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)
+                              && (player.color != missiles[u].color)){
+                                             // checking for enemy bullet collision with player
+                                             // TODO: add checking for both bullet type and color
+                                             player.life++;
+                                             missiles[u].life = 2;
+                                             if(player.life == 3){
+                                                 end = 1;
+                                             }
+                                             Sound_Explosion();
+                                         }
+                  }
                }
 
                // TODO: square distance approximation doesn't feel right just yet, but it works more or less
@@ -515,6 +540,23 @@ void draw(void){
 
     }
 
+    //missile drawings with the same system as enemies
+    for(int i = 0; i<NUMMISSILES; i++){
+            if(missiles[i].life == 1){
+                EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
+                                                  missiles[i].w, missiles[i].h);
+
+                DrawOverSpace(missiles[i].x>>FIX, missiles[i].y>>FIX,
+                                                  missiles[i].image[missiles[i].color][0],
+                                                  missiles[i].w, missiles[i].h);
+            }
+            else if(missiles[i].life == 2){
+                  EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
+                                                    missiles[i].w, missiles[i].h);
+                  missiles[i].life = 0;
+            }
+    }
+
     // draw the player with appropriate damage levels
     // TODO: flicker, this one will be tough to solve
     EraseOverSpace(player.lastx>>FIX, player.lasty>>FIX,
@@ -583,9 +625,9 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // 5) increment in game clock
         timer++;
-        if(timer%30 == 0){
+        if(timer%90 == 0){
             spawnsmallenemy(16<<FIX,10<<FIX,4,0,1,1);
-//            spawnsmallenemy(64<<FIX,10<<FIX,4,0,1,0);
+            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
         }
     }
     else{
@@ -849,7 +891,7 @@ int main(void){ // final main
 
   // TODO:
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
-  //ADCinit();     //PB18 = ADC1 channel 5, slidepot
+  //ADCinit(); //PB18 = ADC1 channel 5, slidepot
   JoyStick_Init(); // Initialize stick
   Switch_Init(); // initialize switches
   LED_Init();    // initialize LED
