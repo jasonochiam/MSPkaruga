@@ -134,13 +134,9 @@ void enemy_init(void){
     }
 }
 
-// TODO: make this
-// void enemylaser(sprite_t enemy)
-
 void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
     static uint8_t i = 0;
     if(i < NUMLASERS){
-        // TODO: fix this
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
         lasers[i].x = enemy.x;   //start at center of player
         lasers[i].y = enemy.y + (4<<FIX);
@@ -181,7 +177,6 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].w = 16;
             enemy[i].h = 10;
             enemy[i].type = 1;
-            enemyball(enemy[i]);
             break;
         }
 
@@ -189,7 +184,29 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
     // if it is full, do nothing
 }
 
-// void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color)
+// alternate enemy type that spawns
+ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+     for(int i = 0; i<NUMENEMIES; i++){
+         // set the first one you find to all the input parameters
+         if(enemy[i].life == 0){
+             enemy[i].life = hp+1; // effective starting hp values
+             enemy[i].color = color;
+             enemy[i].x = x;
+             enemy[i].y = y;
+             enemy[i].image[0][0] = SmallEnemy20pointGreenA;
+             enemy[i].image[1][0] = SmallEnemy20pointYellowA;
+             enemy[i].image2 = SmallEnemy10pointA;
+             enemy[i].blankimage = SmallEnemy10pointAblank;
+             enemy[i].vx = vx;
+             enemy[i].vy = vy;
+             enemy[i].w = 16;
+             enemy[i].h = 10;
+             enemy[i].type = 2;
+             enemyball(enemy[i]);
+             break;
+         }
+     }
+ }
 
 // void spawnhorizontalline()
 
@@ -222,7 +239,6 @@ void player_init(void){
 void lasers_init(void){     //will initialize a new bullet every time switch is pressed with a max of 20 bullets on screen at once
     static uint8_t i = 0;
     if(i < NUMLASERS){
-        // TODO: fix this
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
         lasers[i].color = player.color;
         lasers[i].image[0][0] = LaserGreen0;
@@ -332,7 +348,8 @@ void move(void){
     // move lasers
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
-            if(lasers[j].y <= 0 || lasers[j].y >= 157<<FIX){        //if bullet is offscreen, despawn
+            if(lasers[j].y >= 157<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
+                //if bullet is offscreen, despawn
                 lasers[j].life = 2;
             }
             else{
@@ -349,11 +366,11 @@ void move(void){
     // TODO: enemy bullets stop moving but do not despawn when their associated enemy dies. I don't like this
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
-                if(enemy[i].y >= 157<<FIX){
+                if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX){
                  // this is space invaders logic, enemies 'win' when they move to bottom
 //                    enemy[i].life = 2;
-                    enemy[i].life = 1;
-                    end = 1;    //used to end game in main if aliens win
+                    enemy[i].life = 0;
+//                    end = 1;    //used to end game in main if aliens win
                     Sound_Killed();
 
                 }
@@ -566,7 +583,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // 5) increment in game clock
         timer++;
-        if(timer%120 == 0){
+        if(timer%30 == 0){
             spawnsmallenemy(16<<FIX,10<<FIX,4,0,1,1);
 //            spawnsmallenemy(64<<FIX,10<<FIX,4,0,1,0);
         }
@@ -828,10 +845,9 @@ int main(void){ // final main
     //note: if you colors are weird, see different options for
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
   //ST7735_FillScreen(ST7735_BLACK);
-  //TODO: title screen logic goes here. This will allow us to avoid drawing the bg every frame.
 
 
-
+  // TODO:
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit();     //PB18 = ADC1 channel 5, slidepot
   JoyStick_Init(); // Initialize stick
