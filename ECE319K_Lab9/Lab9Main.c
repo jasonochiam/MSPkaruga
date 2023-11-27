@@ -93,10 +93,11 @@ uint32_t Random(uint32_t n){
 struct sprite{
     uint32_t life; // 0 dead, 1 alive, 2 is dying (will replace with 0 dead, 1 dying, >1 alive)
     uint32_t color; // 0 is green, 1 is yellow (use this for checking bullet-player collisions AFTER you know a hit has occurred)
-    uint32_t type; // used to determine enemies. 0 is basic enemy (no shots), 1 fires lasers straight down periodically, 2 fires lasers toward enemy. This number can be used as an index to select a sprite too.
+    uint32_t type; // used to determine enemies. 1 is basic enemy (no shots), 2 fires lasers straight down periodically, 3 fires lasers toward enemy, and 4 is boss.
+                   //This number can be used as an index to select a sprite. Multiply this number by 10 to calculate score for killing it.
     int32_t x,y; // positive lower left corner. Units: pixels>>FIX
     int32_t lastx,lasty; // used to avoid sprite flicker. Units: pixels>>FIX
-    uint8_t enemyl;   //checks for laser time, 0 for player, 1 for enemy
+    uint8_t enemylaser;   //checks for laser time, 0 for player, 1 for enemy
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
@@ -142,19 +143,18 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
         // TODO: fix this
         lasers[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
         lasers[i].x = enemy.x;   //start at center of player
-        lasers[i].y = enemy.y + (32<<FIX);
+        lasers[i].y = enemy.y + (4<<FIX);
         lasers[i].color = enemy.color;
         lasers[i].image[0][0] = GreenBall;
         lasers[i].image[1][0] = YellowBall;
         lasers[i].blankimage = eBall;
-        lasers[i].vx = 0;
-        lasers[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
+        // math: player x - enemy x / time to travel
+        // make x velocity sinusoidal?
+        lasers[i].vx = (player.x - enemy.x)/100;
+        lasers[i].vy = (player.y - enemy.y)/100;; // NOTE: -10 is 1 pixel per frame moving DOWN.
         lasers[i].w = 14;
         lasers[i].h = 14;
-        lasers[i].enemyl = 1;
-        // TODO: fix this bitmath approach for free performance
-        //i = (i+1)&(NUMLASERS-1);
-        // if there are more lasers then on screen limit, take over the last laser fired
+        lasers[i].enemylaser = 1;
         i++;
         if(i == NUMLASERS){
             i = 0;
@@ -164,6 +164,7 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
 
 void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
 // search the enemy array for an un-spawned enemy
+// TODO: what to do when enemy cap reached? replace oldest enemy
     for(int i = 0; i<NUMENEMIES; i++){
         // set the first one you find to all the input parameters
         if(enemy[i].life == 0){
@@ -179,7 +180,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].vy = vy;
             enemy[i].w = 16;
             enemy[i].h = 10;
-            enemy[i].type = Random(10) & 3;
+            enemy[i].type = 1;
             enemyball(enemy[i]);
             break;
         }
@@ -187,6 +188,14 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
     }
     // if it is full, do nothing
 }
+
+// void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color)
+
+// void spawnhorizontalline()
+
+// void spawncircle()
+
+// void spawnboss()
 
 // initialize player
 // WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
@@ -225,7 +234,7 @@ void lasers_init(void){     //will initialize a new bullet every time switch is 
         lasers[i].h = 9;
         lasers[i].x = player.x+(player.w<<(FIX-1));   //start at center of player
         lasers[i].y = player.y-lasers[i].h;
-        lasers[i].enemyl = 0;       //type = player bullets
+        lasers[i].enemylaser = 0;       //type = player bullets
 
         i++;
         if(i == NUMLASERS){
@@ -337,6 +346,7 @@ void move(void){
 
     // move enemies, then run collision checks
     // TODO: what if multiple hit on the same enemy occur? I don't think this would break anything at the moment.
+    // TODO: enemy bullets stop moving but do not despawn when their associated enemy dies. I don't like this
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX){
@@ -364,20 +374,23 @@ void move(void){
                                && ((lasers[j].y <= (enemy[i].y + (enemy[i].h<<FIX))) && (lasers[j].y >= (enemy[i].y)))
 
                       ){
-                      // if collision occurred and color matched, kill the enemy. In all collisions despawn sprite.
-                           if(lasers[j].color == enemy[i].color && lasers[j].enemyl == 0){
+                      // if collision occurred and color matched, kill the enemy. In all collisions despawn laser sprite.
+                           if(lasers[j].color == enemy[i].color && lasers[j].enemylaser == 0){
                                enemy[i].life--;
+                               score += enemy[i].type*10;
                                //TODO: dink sound?
 
                            }
                            else{
                                Sound_Explosion();
                            }
-                           if(lasers[j].enemyl == 0){       //if laser type is player and laser hits enemy
+                           if(lasers[j].enemylaser == 0){       //if laser type is player and laser hits enemy
                                lasers[j].life = 2;
                            }
                        }
-                       if((player.x-lasers[j].x)*(player.x-lasers[j].x)+(player.y-lasers[j].y)*(player.y-lasers[j].y) <= (500<<FIX)){
+                       if((player.x-lasers[j].x)*(player.x-lasers[j].x)+(player.y-lasers[j].y)*(player.y-lasers[j].y) <= (500<<FIX)
+                               && (player.color != lasers[j].color)
+                               && (lasers[j].enemylaser)){
                                               // checking for enemy bullet collision with player
                                               // TODO: add checking for both bullet type and color
                                               player.life++;
@@ -553,9 +566,9 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // 5) increment in game clock
         timer++;
-        if(timer%60 == 0){
-            spawnsmallenemy(32<<FIX,10<<FIX,0,1<<FIX,1,0);
-            spawnsmallenemy(64<<FIX,10<<FIX,0,1<<FIX,1,1);
+        if(timer%120 == 0){
+            spawnsmallenemy(16<<FIX,10<<FIX,4,0,1,1);
+//            spawnsmallenemy(64<<FIX,10<<FIX,4,0,1,0);
         }
     }
     else{
@@ -884,7 +897,7 @@ int main(void){ // final main
           ST7735_OutString((char *)Status3[win][Language]);
           ST7735_SetCursor(1, 7);
           ST7735_OutString((char *)Score[Language]);
-          ST7735_OutUDec(1234);
+          ST7735_OutUDec(score);
 
           while(1){
           }
