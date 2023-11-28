@@ -32,8 +32,8 @@
 #define MID 1<<27
 #define RIGHT 1<<28
 #define FIX 3
-#define GREEN 0
-#define YELLOW 1
+#define GREENWAVE 0
+#define YELLOWWAVE 1
 
 // misc defines
 #define NUMCOLORS 2
@@ -71,6 +71,7 @@ uint32_t first = 1;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
+uint16_t textcolor = 0;
 
 
 
@@ -407,9 +408,10 @@ void move(void){
     }
 
     // move lasers
+    // TODO: lasers don't spawn at bottom of the screen
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
-            if(lasers[j].y >= 157<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
+            if(lasers[j].y >= 159<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
                 //if bullet is offscreen, despawn
                 lasers[j].life = 2;
             }
@@ -696,7 +698,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 1:
-                    spawnline(YELLOW);
+                    spawnline(YELLOWWAVE);
                     wave++;
                     break;
                 case 2:
@@ -993,6 +995,7 @@ int main(void){ // final main
                 ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
                 redrawbg = 0;
             }
+            //ST7735_SetTextColor(ST7735_GREEN);
             ST7735_SetCursor(5-(2*Language), 1);
             ST7735_OutString((char *)Title[Language]);
 
@@ -1036,13 +1039,14 @@ int main(void){ // final main
           ST7735_SetCursor(6-(2*Language), 1);
           // TODO: this text color code just doesn't work.
           if(win){
-              ST7735_SetTextColor(ST7735_GREEN);
+              textcolor = (ST7735_GREEN);
           }
           else{
-              ST7735_SetTextColor(ST7735_RED);
+              textcolor = (ST7735_RED);
           }
-          ST7735_OutString((char *)GameOver[Language]);
-          ST7735_SetTextColor(ST7735_YELLOW);
+          ST7735_DrawString(6-(2*Language),1,(char *)GameOver[Language],textcolor);
+//          ST7735_OutString((char *)GameOver[Language]);
+//          ST7735_SetTextColor(ST7735_YELLOW);
           ST7735_SetCursor(1, 11);
           ST7735_OutString((char *)Status0[Language]);
           ST7735_OutString((char *)Status1[win][Language]);
