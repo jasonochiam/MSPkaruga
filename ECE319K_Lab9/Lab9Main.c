@@ -37,7 +37,7 @@
 
 // misc defines
 #define NUMCOLORS 2
-#define NUMHP 4
+#define NUMHP 4 // it is actually the number you put - 1, we account for not rendered states
 
 //Flags
 uint32_t Flag = 0; // Semaphore
@@ -105,9 +105,11 @@ struct sprite{
     uint8_t enemylaser;   //checks for laser time, 0 for player, 1 for enemy
     uint32_t tracking; // set for lasers to see if shots will track
     uint32_t spawntime;
+    uint32_t iframe;
+    uint32_t invincible;
     const uint16_t *redimage;
     const uint16_t *greenimage;
-    const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
+    const uint16_t *image[NUMCOLORS][NUMHP+1]; // a 2d array of images. X axis is damage level and Y axis is color
     const uint16_t *image2; // the default image for the sprite, in cases where I haven't implemented multiple damage images
     const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
     const uint16_t *swapanimation; // points to swap animation frames for the player
@@ -144,7 +146,7 @@ void enemy_init(void){
     }
 }
 
-void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color, uint32_t type){
 // search the enemy array for an un-spawned enemy
 // TODO: what to do when enemy cap reached? replace oldest enemy
     for(int i = 0; i<NUMENEMIES; i++){
@@ -162,7 +164,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].vy = vy;
             enemy[i].w = 16;
             enemy[i].h = 10;
-            enemy[i].type = 1;
+            enemy[i].type = type;
 //            enemylaser(enemy[i]);
             break;
         }
@@ -234,8 +236,8 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
      missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
      missiles[i].w = 2;
      missiles[i].h = 9;
-     missiles[i].x = enemy.x+(enemy.w/2);   //start at center of player
-     missiles[i].y = enemy.y + enemy.h;
+     missiles[i].x = enemy.x+((enemy.w/2)<<FIX);   //start at center of player
+     missiles[i].y = enemy.y + (enemy.h<<FIX);
      missiles[i].color = enemy.color;
      missiles[i].image[0][0] = LaserGreen0;
      missiles[i].image[1][0] = LaserYellow0;
@@ -256,19 +258,19 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
 
 // spawns a line of basic enemies
 void spawnline(color){
-    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,color);
-    spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,color);
-    spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,color);
-    spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,color);
-    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,color);
+    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,color,0);
+    spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,color,1);
+    spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,color,0);
+    spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,color,1);
+    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,color,0);
 }
 
 void spawnbird(){
-    spawnsmallenemy(16<<FIX,9<<FIX,0,3,1,1);
-    spawnsmallenemy(36<<FIX,19<<FIX,0,3,1,0);
-    spawnsmallenemy(56<<FIX,29<<FIX,0,3,1,1);
-    spawnsmallenemy(76<<FIX,19<<FIX,0,3,1,0);
-    spawnsmallenemy(96<<FIX,9<<FIX,0,3,1,1);
+    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,1,1);
+    spawnsmallenemy(36<<FIX,19<<FIX,0,2,1,0,1);
+    spawnsmallenemy(56<<FIX,29<<FIX,0,2,1,1,1);
+    spawnsmallenemy(76<<FIX,19<<FIX,0,2,1,0,1);
+    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,1,1);
 }
 
 // 3 evenly spaced enemies that race down the screen. Use with other enemy formations
@@ -292,15 +294,18 @@ void spawnbird(){
 void player_init(void){
     player.x = player.lastx = 64<<FIX;
     player.y = player.lasty = 159<<FIX;
-    player.life = 0; // 0 is 3/3 hp, 1 is 2/3 hp, 2 is 1/3 hp, 3 is dying, 4 is dead (despawned)
+    player.life = NUMHP; // 0 is 3/3 hp, 1 is 2/3 hp, 2 is 1/3 hp, 3 is dying, 4 is dead (despawned)
+    // 4 is 3/3 hp, 3 is 2/3 hp, 2 is 1/3 hp, 1 is dying, 0 is dead (despawned)
     player.image[0][0] = PlayerShip0;
     player.image[0][1] = PlayerShip1;
-    player.image[0][2] = PlayerShip3;
-    player.image[0][3] = PlayerShip4;
+    player.image[0][2] = PlayerShip2;
+    player.image[0][3] = PlayerShip3;
+    player.image[0][4] = PlayerShip4;
     player.image[1][0] = PlayerShipYellow0;
     player.image[1][1] = PlayerShipYellow1;
-    player.image[1][2] = PlayerShipYellow3;
-    player.image[1][3] = PlayerShip4;
+    player.image[1][2] = PlayerShipYellow2;
+    player.image[1][3] = PlayerShipYellow3;
+    player.image[1][4] = PlayerShip4;
     // TODO: add a ship explosion graphic?
     // TODO: add swap animation frames if you have all the time in the world
     player.blankimage = PlayerShip4;
@@ -407,11 +412,15 @@ void move(void){
         player.y = 0;
     }
 
+    if(timer-player.iframe>=30){
+        player.invincible = 0;
+    }
+
     // move lasers
     // TODO: lasers don't spawn at bottom of the screen
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
-            if(lasers[j].y >= 159<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
+            if(lasers[j].y >= 160<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
                 //if bullet is offscreen, despawn
                 lasers[j].life = 2;
             }
@@ -478,7 +487,7 @@ void move(void){
                       // if collision occurred and color matched, kill the enemy. In all collisions despawn laser sprite.
                            if(lasers[j].color == enemy[i].color && lasers[j].enemylaser == 0){
                                enemy[i].life--;
-                               score += enemy[i].type*10;
+                               score += (enemy[i].type*10)+10;
                            }
                            else{
                                //TODO: dink sound?
@@ -496,10 +505,12 @@ void move(void){
                       if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)){
                                              // checking for enemy bullet collision with player
                                              // TODO: add checking for both bullet type and color
-                          if(player.color != missiles[u].color){
-                              player.life++;
+                          if(player.color != missiles[u].color && !player.invincible){
+                              player.life--;
                                missiles[u].life = 2;
-                               if(player.life == 3){
+                               player.invincible = 1;
+                               player.iframe = timer;
+                               if(player.life == 0){
                                    end = 1;
                                }
                                Sound_Explosion();
@@ -510,22 +521,39 @@ void move(void){
                }
 
                // TODO: square distance approximation doesn't feel right just yet, but it works more or less
-               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)){
+               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)
+                       && !player.invincible){
                    // get rid of line below when i-frames are added
                    enemy[i].life = 1;
-                   player.life++;
-                   if(player.life == 3){
+                   player.life--;
+                   player.invincible = 1;
+                   player.iframe = timer;
+                   if(player.life == 0){
                        end = 1;
                    }
                    Sound_Explosion();
                }
-               // TODO: invincibility frames after hit? Right now it just kills the enemy which can result in abuse
+
+               // Enemy shooting system
+               // if enemy type is one, RNG shoot
+               // if enemy type is two, periodic shooting
+               switch(enemy[i].type){
+                   case 1:
+                       if(Random(150) == 1){
+                           enemylaser(enemy[i]);
+                       }
+                       break;
+                   case 2:
+                       if(timer%150 == 1){
+                           enemyball(enemy[i]);
+                       }
+                       break;
+                   // this will be for passive enemies
+                   default:
+                       break;
+               }
             }
     }
-
-    // TODO: have enemies shoot
-    // if enemy type is one, periodic shooting
-    // if enemy type is two, periodic shooting
 }
 
 // Methods related to drawing to the screen
@@ -623,14 +651,14 @@ void draw(void){
     EraseOverSpace(player.lastx>>FIX, player.lasty>>FIX,
                               player.w, player.h);
     DrawOverSpace(player.x>>FIX, player.y>>FIX,
-                                              player.image[player.color][player.life],
+                                              player.image[player.color][NUMHP-player.life],
                                               player.w, player.h);
 
     ST7735_SetCursor(16, 0);
     ST7735_OutUDec4(score);
 }
 
-// games  engine runs at 30Hz
+// games engine runs at 30Hz
 void TIMG12_IRQHandler(void){uint32_t pos,msg;
   if((TIMG12->CPU_INT.IIDX) == 1){ // this will acknowledge
     GPIOB->DOUTTGL31_0 = GREEN; // toggle PB27 (minimally intrusive debugging)
@@ -661,15 +689,12 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     }
     lastups = ups;
 
-
-    // TODO: technically the player can swap color on title screen with the way this works right now. Not too much of an issue but just note it.
     swaps = Swap_In();
-    if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1)){
+    if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1) && !title){
         changecolor();
     }
     lastswaps = swaps;
 
-    // TODO: figure out screen clear move (if at all)
     // basically if click and some condition about how many shots the player has absorbed, set all enemy lives to 0 EXCEPT boss types if we have them
     click = JoyStick_InButton();
 
@@ -677,7 +702,6 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     // Check for collisions, incrementing score as needed or charging special attack
     // Getting hit should subtract from health and score, also stopping a potential streak feature
     // Hitting something should add to a streak
-    // TODO: add color based collisions
     if(!title){
         move();
         // represent player status with onboard LEDs
@@ -693,7 +717,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
             switch(wave)
             {
                 case 0:
-                    spawnsmallenemy(56<<FIX,30<<FIX,0,1,1,0);
+                    spawnsmallenemy(56<<FIX,30<<FIX,0,1,1,0,0);
                     first = 0;
                     wave++;
                     break;
@@ -703,6 +727,14 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     break;
                 case 2:
                     spawnbird();
+                    wave++;
+                    break;
+                case 3:
+                    spawnline(GREENWAVE);
+                    spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
+                    wave++;
+                    break;
+                case 4:
                     wave++;
                     break;
                 default:
