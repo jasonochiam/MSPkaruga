@@ -98,6 +98,7 @@ struct sprite{
     int32_t x,y; // positive lower left corner. Units: pixels>>FIX
     int32_t lastx,lasty; // used to avoid sprite flicker. Units: pixels>>FIX
     uint8_t enemylaser;   //checks for laser time, 0 for player, 1 for enemy
+    uint32_t tracking; // set for lasers to see if shots will track
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
@@ -111,7 +112,7 @@ struct sprite{
 
 typedef struct sprite sprite_t;
 
-#define NUMENEMIES 50
+#define NUMENEMIES 60
 sprite_t enemy[NUMENEMIES];
 #define NUMLASERS 50
 sprite_t lasers[NUMLASERS];
@@ -121,6 +122,7 @@ sprite_t player;
 
 // Enemy pattern, spawns two small enemies at the top of the screen. Not using in final game!
 void enemyball(sprite_t enemy);
+void enemylaser(sprite_t enemy);
 
 void enemy_init(void){
     for(int i = 0; i<2; i++){
@@ -155,6 +157,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].w = 16;
             enemy[i].h = 10;
             enemy[i].type = 1;
+            enemylaser(enemy[i]);
             break;
         }
 
@@ -163,7 +166,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
 }
 
 // alternate enemy type that spawns
- void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
      for(int i = 0; i<NUMENEMIES; i++){
          // set the first one you find to all the input parameters
          if(enemy[i].life == 0){
@@ -184,7 +187,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
              break;
          }
      }
- }
+}
 
 // ENEMY SHOOT SPAWNS
 
@@ -201,7 +204,7 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
      // math: player x - enemy x / time to travel
      // make x velocity sinusoidal?
      missiles[i].vx = (player.x - enemy.x)/100;
-     missiles[i].vy = (player.y - enemy.y)/100;; // NOTE: -10 is 1 pixel per frame moving DOWN.
+     missiles[i].vy = (player.y - enemy.y)/100; // NOTE: -10 is 1 pixel per frame moving DOWN.
      missiles[i].w = 14;
      missiles[i].h = 14;
      missiles[i].enemylaser = 1;
@@ -210,6 +213,28 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
          i = 0;
      }
  }
+}
+
+void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+ static uint8_t i = 0;
+ if(i < NUMMISSILES){
+     missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+     missiles[i].w = 2;
+     missiles[i].h = 9;
+     missiles[i].x = enemy.x+(enemy.w/2);   //start at center of player
+     missiles[i].y = enemy.y + enemy.h;
+     missiles[i].color = enemy.color;
+     missiles[i].image[0][0] = LaserGreen0;
+     missiles[i].image[1][0] = LaserYellow0;
+     missiles[i].blankimage = eLaser0;
+     missiles[i].vx = 0;
+     missiles[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
+     missiles[i].enemylaser = 1;
+     i++;
+     if(i == NUMMISSILES){
+         i = 0;
+     }
+  }
 }
 
 
@@ -464,7 +489,6 @@ void move(void){
 
 // Methods related to drawing to the screen
 
-// QUESTION: what is background? a 16 bit array of length?
 // Background is just a way to hold a temporary frame buffer, don't worry about it!
 // set to the size of your biggest sprite (w*h) (could change in future)
 uint16_t background[500];
@@ -626,8 +650,8 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         // 5) increment in game clock
         timer++;
         if(timer%90 == 0){
-            spawnsmallenemy(16<<FIX,10<<FIX,4,0,1,1);
-            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
+            spawnsmallenemy(32<<FIX,20<<FIX,2,0,1,1);
+//            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
         }
     }
     else{
