@@ -64,6 +64,7 @@ uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
 uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
+uint32_t first = 1;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
@@ -99,6 +100,7 @@ struct sprite{
     int32_t lastx,lasty; // used to avoid sprite flicker. Units: pixels>>FIX
     uint8_t enemylaser;   //checks for laser time, 0 for player, 1 for enemy
     uint32_t tracking; // set for lasers to see if shots will track
+    uint32_t spawntime;
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP]; // a 2d array of images. X axis is damage level and Y axis is color
@@ -191,6 +193,7 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
 
 // ENEMY SHOOT SPAWNS
 
+// spawns a ball starting at the provided enemy, and tracks the player for 5 seconds. If absorbed add to the player score?
 void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
  static uint8_t i = 0;
  if(i < NUMMISSILES){
@@ -203,10 +206,14 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
      missiles[i].blankimage = eBall;
      // math: player x - enemy x / time to travel
      // make x velocity sinusoidal?
-     missiles[i].vx = (player.x - enemy.x)/100;
-     missiles[i].vy = (player.y - enemy.y)/100; // NOTE: -10 is 1 pixel per frame moving DOWN.
-     missiles[i].w = 14;
-     missiles[i].h = 14;
+     missiles[i].vx = (player.x - enemy.x)/15;
+     missiles[i].vy = (player.y - enemy.y)/15; // NOTE: -10 is 1 pixel per frame moving DOWN.
+//     missiles[i].w = 14;
+     missiles[i].w = 10;
+//     missiles[i].h = 14;
+     missiles[i].h = 10;
+     missiles[i].spawntime = timer;
+     missiles[i].tracking = 1;
      missiles[i].enemylaser = 1;
      i++;
      if(i == NUMMISSILES){
@@ -400,10 +407,17 @@ void move(void){
                 missiles[j].life = 2;
             }
             else{
-                missiles[j].lastx = missiles[j].x;
-                missiles[j].lasty = missiles[j].y;
-                missiles[j].x += missiles[j].vx;
-                missiles[j].y += missiles[j].vy;
+                if(missiles[j].tracking && timer%6 == 0 && timer - missiles[j].spawntime < 150){
+                    // (player-enemy) = velocity*time?
+                    missiles[j].vx = (player.x - missiles[j].x)/15;
+                    missiles[j].vy = (player.y - missiles[j].y)/15;
+                }
+                else{
+                    missiles[j].lastx = missiles[j].x;
+                    missiles[j].lasty = missiles[j].y;
+                    missiles[j].x += missiles[j].vx;
+                    missiles[j].y += missiles[j].vy;
+                }
             }
         }
     }
@@ -456,17 +470,19 @@ void move(void){
                for(int u = 0; u<NUMMISSILES; u++){
                    if(missiles[u].life == 1){
                       // recall that the 'position' of a sprite is the top left corner
-                      if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)
-                              && (player.color != missiles[u].color)){
+                      if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)){
                                              // checking for enemy bullet collision with player
                                              // TODO: add checking for both bullet type and color
-                                             player.life++;
-                                             missiles[u].life = 2;
-                                             if(player.life == 3){
-                                                 end = 1;
-                                             }
-                                             Sound_Explosion();
-                                         }
+                          if(player.color != missiles[u].color){
+                              player.life++;
+                               missiles[u].life = 2;
+                               if(player.life == 3){
+                                   end = 1;
+                               }
+                               Sound_Explosion();
+                          }
+                          missiles[u].life = 2;
+                     }
                   }
                }
 
@@ -481,10 +497,10 @@ void move(void){
                    Sound_Explosion();
                }
                // TODO: invincibility frames after hit? Right now it just kills the enemy which can result in abuse
-
-
             }
     }
+
+    // TODO: have enemies shoot
 }
 
 // Methods related to drawing to the screen
@@ -492,7 +508,6 @@ void move(void){
 // Background is just a way to hold a temporary frame buffer, don't worry about it!
 // set to the size of your biggest sprite (w*h) (could change in future)
 uint16_t background[500];
-
 
 // all parameters are in pixels
 void Fill(int32_t x, int32_t y, int32_t xsize, int32_t ysize){
@@ -525,10 +540,7 @@ void EraseOverSpace(int32_t x, int32_t y, int32_t w, int32_t h){
 // Always draw in this order: enemies->->player->projectiles
 void draw(void){
     //drawings for enemies that takes care of despawned enemies
-
     // TODO: draw score with SmallFont_OutHorizontal from the headers
-
-
 
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life > 1){
@@ -588,9 +600,7 @@ void draw(void){
     DrawOverSpace(player.x>>FIX, player.y>>FIX,
                                               player.image[player.color][player.life],
                                               player.w, player.h);
-
 }
-
 
 // games  engine runs at 30Hz
 void TIMG12_IRQHandler(void){uint32_t pos,msg;
@@ -649,9 +659,10 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // 5) increment in game clock
         timer++;
-        if(timer%90 == 0){
-            spawnsmallenemy(32<<FIX,20<<FIX,2,0,1,1);
-//            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
+        if(first || timer%60 == 0){
+//            spawnsmallenemy(32<<FIX,20<<FIX,2,0,1,1);
+            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
+            first = 0;
         }
     }
     else{
