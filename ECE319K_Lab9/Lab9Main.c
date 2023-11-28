@@ -64,6 +64,7 @@ uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
 uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
+uint32_t wave = 0;
 uint32_t first = 1;
 
 // Misc
@@ -159,7 +160,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].w = 16;
             enemy[i].h = 10;
             enemy[i].type = 1;
-            enemylaser(enemy[i]);
+//            enemylaser(enemy[i]);
             break;
         }
 
@@ -185,11 +186,13 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
              enemy[i].w = 16;
              enemy[i].h = 10;
              enemy[i].type = 2;
-             enemyball(enemy[i]);
+//             enemyball(enemy[i]);
              break;
          }
      }
 }
+
+// void spawnboss()
 
 // ENEMY SHOOT SPAWNS
 
@@ -246,11 +249,35 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
 
 
 // ENEMY FORMATION SPAWNS
+// TODO: at a wave spawn rate of 1 every 9 seconds,
 
-// void spawnhorizontalline()
+// spawns a line of basic enemies
+void spawnline(){
+    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,0);
+    spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,1);
+    spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,0);
+    spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,1);
+    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,0);
+}
 
+void spawnbird(){
+    spawnsmallenemy(16<<FIX,9<<FIX,0,3,1,1);
+    spawnsmallenemy(36<<FIX,19<<FIX,0,3,1,0);
+    spawnsmallenemy(56<<FIX,29<<FIX,0,3,1,1);
+    spawnsmallenemy(76<<FIX,19<<FIX,0,3,1,0);
+    spawnsmallenemy(96<<FIX,9<<FIX,0,3,1,1);
+}
+
+// 3 evenly spaced enemies that race down the screen. Use with other enemy formations
+// void spawnfastline()
+
+// ideally this circle rotates around you
 // void spawncircle()
 
+// 2-4 enemies that start from bottom corners and race to the top
+// void spawnx()
+
+// boss will take a ton of hits, shoot big balls in all directions.
 // void spawnboss()
 
 
@@ -344,18 +371,12 @@ void move(void){
     JoyStick_In(&XData,&YData); // XData is 0 to 4095, higher is more to the left
                                 // YData is 0 to 4095, higher is further up
 
-    // Why did I make another set of variables?
-    // Valvano's code assumes we want to get a unsigned value, however we need it to be signed.
-    // I could've changed the methods, but each method relies on another and I didn't want to mess around with it.
-    // If we are looking for extra speed, maybe I can go and change the drivers so we don't need these two variables.
-    // Convert to signed int reflecting +/-
-    // What should the maximum velocity be? Experiment with values.
     // Dead-zone has a radius of 100
     // At the center, the Y value like to hang from 2080 to 2090
     // For X, 2010 to 2020
     x = XData-2010; // makes middle close to zero, left is positive, right is negative
     y = YData-2080;
-    // Deadzone handler: this may not be needed
+    // Deadzone handler
     player.vx = (x>>7);
     player.vy = (y>>7);
     if((-100<x)&&(x<100)){
@@ -376,8 +397,8 @@ void move(void){
 
     player.lasty = player.y;
     player.y -= player.vy;
-    if(player.y > 150<<FIX){
-        player.y = 150<<FIX;
+    if(player.y > 159<<FIX){
+        player.y = 159<<FIX;
     }
     if(player.y < 0){
         player.y = 0;
@@ -423,8 +444,6 @@ void move(void){
     }
 
     // move enemies, then run collision checks
-    // TODO: what if multiple hit on the same enemy occur? I don't think this would break anything at the moment.
-    // TODO: enemy bullets stop moving but do not despawn when their associated enemy dies. I don't like this
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX){
@@ -501,6 +520,8 @@ void move(void){
     }
 
     // TODO: have enemies shoot
+    // if enemy type is one, periodic shooting
+    // if enemy type is two, periodic shooting
 }
 
 // Methods related to drawing to the screen
@@ -659,10 +680,33 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // 5) increment in game clock
         timer++;
-        if(first || timer%60 == 0){
-//            spawnsmallenemy(32<<FIX,20<<FIX,2,0,1,1);
-            spawnmediumenemy(16<<FIX,30<<FIX,4,0,1,0);
-            first = 0;
+
+        // after about nine seconds, spawn a wave
+        if(first || timer%270 == 1){
+            switch(wave)
+            {
+                case 0:
+                    spawnsmallenemy(56<<FIX,30<<FIX,0,1,1,0);
+                    first = 0;
+                    wave++;
+                    break;
+                case 1:
+                    spawnline();
+                    wave++;
+                    break;
+                case 2:
+                    spawnbird();
+                    wave++;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // if the level is done, end the game and set the victory status to true.
+        if(timer == 30*120){
+            win = 1;
+            end = 1;
         }
     }
     else{
@@ -924,14 +968,12 @@ int main(void){ // final main
   //ST7735_FillScreen(ST7735_BLACK);
 
 
-  // TODO:
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit(); //PB18 = ADC1 channel 5, slidepot
   JoyStick_Init(); // Initialize stick
   Switch_Init(); // initialize switches
   LED_Init();    // initialize LED
   Sound_Init();  // initialize sound
-//  enemy_init(); for testing
   player_init();
   TExaS_Init(0,0,&TExaS_LaunchPadLogicPB27PB26); // PB27 and PB26 USE FOR DEBUGGING?
   // initialize interrupts on TimerG12 at 30 Hz
@@ -943,7 +985,7 @@ int main(void){ // final main
         if(title){
             // TODO: title screen logo. If you make anything from scratch let it be this
             if(redrawbg){
-                ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
+                ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
                 redrawbg = 0;
             }
             ST7735_SetCursor(5-(2*Language), 1);
@@ -963,7 +1005,7 @@ int main(void){ // final main
         }
         else{
             if(redrawbg){
-                ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
+                ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
                 redrawbg = 0;
             }
             // update ST7735R with sprites
@@ -975,20 +1017,35 @@ int main(void){ // final main
 
     if(end){
         TIMG12->CPU_INT.IMASK = 0; // zero event mask
-        LED_Off(LEFT);
+        if(win){
+            LED_On(LEFT);
+            LED_Off(RIGHT);
+        }
+        else{
+            LED_On(RIGHT);
+            LED_Off(LEFT);
+        }
         LED_Off(MID);
-        LED_On(RIGHT);
         ST7735_FillScreen(0x0000);   // set screen to black
+        // draw a funny valvano thing
           ST7735_SetCursor(6-(2*Language), 1);
+          // TODO: this text color code just doesn't work.
+          if(win){
+              ST7735_SetTextColor(ST7735_GREEN);
+          }
+          else{
+              ST7735_SetTextColor(ST7735_RED);
+          }
           ST7735_OutString((char *)GameOver[Language]);
-          ST7735_SetCursor(1, 3);
+          ST7735_SetTextColor(ST7735_YELLOW);
+          ST7735_SetCursor(1, 11);
           ST7735_OutString((char *)Status0[Language]);
           ST7735_OutString((char *)Status1[win][Language]);
-          ST7735_SetCursor(1, 4);
+          ST7735_SetCursor(1, 12);
           ST7735_OutString((char *)Status2[win][Language]);
-          ST7735_SetCursor(1, 5);
+          ST7735_SetCursor(1, 13);
           ST7735_OutString((char *)Status3[win][Language]);
-          ST7735_SetCursor(1, 7);
+          ST7735_SetCursor(1, 14);
           ST7735_OutString((char *)Score[Language]);
           ST7735_OutUDec(score);
 
