@@ -61,7 +61,7 @@ uint32_t click; // holds the joystick click for this frame
 
 // Game state flags
 uint32_t redrawplayer; // indicates to the render system if the player must be redrawn
-uint32_t redrawbg; // tells the game to redraw the background (needed for title screen logic)
+uint32_t redrawbg = 1; // tells the game to redraw the background (needed for title screen logic)
 uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
 uint32_t end; // tells the game to end or not (slightly different than win)
@@ -71,6 +71,7 @@ uint32_t first = 1;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
+const uint16_t *titleptr = titlescreen; // pointer to title image
 uint16_t textcolor = 0;
 
 
@@ -560,7 +561,7 @@ void move(void){
 
 // Background is just a way to hold a temporary frame buffer, don't worry about it!
 // set to the size of your biggest sprite (w*h) (could change in future)
-uint16_t background[500];
+uint16_t background[60*60];
 
 // all parameters are in pixels
 void Fill(int32_t x, int32_t y, int32_t xsize, int32_t ysize){
@@ -1006,6 +1007,8 @@ int main(void){ // final main
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
   //ST7735_FillScreen(ST7735_BLACK);
 
+  ST7735_DrawBitmap(30, 110, titleptr, 60, 60);         //loading screen
+  Clock_Delay1ms(3000);
 
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit(); //PB18 = ADC1 channel 5, slidepot
@@ -1025,22 +1028,25 @@ int main(void){ // final main
             // TODO: title screen logo. If you make anything from scratch let it be this
             if(redrawbg){
                 ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
+                EraseOverSpace(30,70,60,60);
+                DrawOverSpace(30, 70, titleptr, 60, 60);
                 redrawbg = 0;
             }
             //ST7735_SetTextColor(ST7735_GREEN);
-            ST7735_SetCursor(5-(2*Language), 1);
-            ST7735_OutString((char *)Title[Language]);
+//            ST7735_SetCursor(5-(2*Language), 1);
+//            ST7735_OutString((char *)Title[Language]);
 
-            ST7735_SetCursor(1, 3);
+            ST7735_SetCursor(1, 3+5);
             ST7735_OutString((char *)Start[Language]);
-            ST7735_SetCursor(1, 4);
+            ST7735_SetCursor(1, 4+5);
             ST7735_OutString((char *)Start2[Language]);
 
-            ST7735_SetCursor(1, 6);
+            ST7735_SetCursor(1, 6+5);
             ST7735_OutString((char *)Select[Language]);
-            ST7735_SetCursor(1, 7);
+            ST7735_SetCursor(1, 7+5);
             ST7735_OutString((char *)Language2[Language]);
-            ST7735_SetCursor(1, 8);
+            ST7735_SetCursor(1, 8+5);
+
             Flag = 0;
         }
         else{
