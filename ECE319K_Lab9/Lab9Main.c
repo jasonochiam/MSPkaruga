@@ -318,25 +318,25 @@ void player_init(void){
 // uses the player's life to update PCB LEDs
 void ledstatus(void){
     switch(player.life){
-    case 0:
+    case 4:
         LED_On(LEFT);
         LED_Off(MID);
         LED_Off(RIGHT);
         break;
-    case 1:
+    case 3:
         LED_Off(LEFT);
         LED_On(MID);
         LED_Off(RIGHT);
         break;
     case 2:
         LED_Off(LEFT);
-        LED_Off(MID);
-        LED_On(RIGHT);
+        LED_On(MID);
+        LED_Off(RIGHT);
         break;
-    case 3:
+    case 1:
         LED_Off(LEFT);
         LED_Off(MID);
-        LED_Off(RIGHT);
+        LED_On(RIGHT);
         break;
     default:
         break;
