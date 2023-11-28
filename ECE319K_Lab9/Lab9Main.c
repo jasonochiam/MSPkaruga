@@ -32,6 +32,8 @@
 #define MID 1<<27
 #define RIGHT 1<<28
 #define FIX 3
+#define GREEN 0
+#define YELLOW 1
 
 // misc defines
 #define NUMCOLORS 2
@@ -252,12 +254,12 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
 // TODO: at a wave spawn rate of 1 every 9 seconds,
 
 // spawns a line of basic enemies
-void spawnline(){
-    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,0);
-    spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,1);
-    spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,0);
-    spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,1);
-    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,0);
+void spawnline(color){
+    spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,color);
+    spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,color);
+    spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,color);
+    spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,color);
+    spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,color);
 }
 
 void spawnbird(){
@@ -449,7 +451,7 @@ void move(void){
                 if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX){
                  // this is space invaders logic, enemies 'win' when they move to bottom
 //                    enemy[i].life = 2;
-                    enemy[i].life = 0;
+                    enemy[i].life = 1;
 //                    end = 1;    //used to end game in main if aliens win
                     Sound_Killed();
 
@@ -621,6 +623,9 @@ void draw(void){
     DrawOverSpace(player.x>>FIX, player.y>>FIX,
                                               player.image[player.color][player.life],
                                               player.w, player.h);
+
+    ST7735_SetCursor(16, 0);
+    ST7735_OutUDec4(score);
 }
 
 // games  engine runs at 30Hz
@@ -691,7 +696,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 1:
-                    spawnline();
+                    spawnline(YELLOW);
                     wave++;
                     break;
                 case 2:
