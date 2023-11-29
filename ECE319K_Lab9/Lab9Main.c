@@ -70,6 +70,7 @@ uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
 uint32_t first;
 uint32_t titleflag = 0;
+int32_t shiftvelocity = 1;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
@@ -200,7 +201,29 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
      }
 }
 
-// void spawnboss()
+void spawnboss(uint32_t x, uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+     for(int i = 0; i<NUMENEMIES; i++){
+         // set the first one you find to all the input parameters
+         if(enemy[i].life == 0){
+             enemy[i].life = hp+1; // effective starting hp values
+             enemy[i].color = color; // boss can switch color
+             // position wil probably be fixed, may remove parameters
+             enemy[i].x = x;
+             enemy[i].y = y;
+             // TODO: change these when boss image done
+             enemy[i].image[0][0] = SmallEnemy20pointGreenA;
+             enemy[i].image[1][0] = SmallEnemy20pointYellowA;
+             enemy[i].blankimage = SmallEnemy10pointAblank;
+             enemy[i].vx = vx; // likely 0
+             enemy[i].vy = vy; // likely 0
+             // TODO: change these when boss image done
+             enemy[i].w = 16;
+             enemy[i].h = 10;
+             enemy[i].type = 4;
+             break;
+         }
+     }
+}
 
 // ENEMY SHOOT SPAWNS
 
@@ -233,6 +256,31 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
             break;
         }
     }
+}
+
+void spawnshiftenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+// search the enemy array for an un-spawned enemy
+// TODO: what to do when enemy cap reached? replace oldest enemy
+    for(int i = 0; i<NUMENEMIES; i++){
+        // set the first one you find to all the input parameters
+        if(enemy[i].life == 0){
+            enemy[i].life = hp+1; // effective starting hp values
+            enemy[i].color = color;
+            enemy[i].x = x;
+            enemy[i].y = y;
+            enemy[i].image[0][0] = SmallEnemy10pointGreenA;
+            enemy[i].image[1][0] = SmallEnemy10pointYellowA;
+            enemy[i].blankimage = SmallEnemy10pointAblank;
+            enemy[i].vx = 0;
+            enemy[i].vy = vy;
+            enemy[i].w = 16;
+            enemy[i].h = 10;
+            enemy[i].type = 3;
+            break;
+        }
+
+    }
+    // if it is full, do nothing
 }
 
 void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
@@ -306,9 +354,6 @@ void spawnx(uint32_t color){
     spawnsmallenemy(108<<FIX,105<<FIX,-4,-5,1,color,1);
     spawnsmallenemy(108<<FIX,120<<FIX,-4,-5,1,color,1);
 }
-
-// boss will take a ton of hits, shoot big balls in all directions.
-// void spawnboss()
 
 
 // PLAYER FUNCTIONS
@@ -439,6 +484,10 @@ void move(void){
         player.invincible = 0;
     }
 
+    if(timer%60 == 1){
+        shiftvelocity = -shiftvelocity;
+    }
+
     // move lasers
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
@@ -485,6 +534,7 @@ void move(void){
     }
 
     // move enemies, then run collision checks
+    // TODO: boss
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX || enemy[i].y <= 3<<FIX || enemy[i].x <= 0<<FIX){
@@ -496,6 +546,10 @@ void move(void){
 
                 }
                 else{       //else move enemies
+                    if(enemy[i].type == 3){
+                        enemy[i].vx = 2*shiftvelocity;
+                        enemy[i].vy = 0;
+                    }
                     enemy[i].lastx = enemy[i].x;
                     enemy[i].lasty = enemy[i].y;
                     enemy[i].x += enemy[i].vx;
@@ -577,14 +631,19 @@ void move(void){
                         // if enemy type is one, RNG shoot
                         //laser shooting breaks the system
                         case 1:
-                            if(Random(150) == 1){
+                            if(Random(100) == 1){
                                 enemylaser(enemy[i]);
                             }
                             break;
                         // if enemy type is two, periodic shooting
                         case 2:
-                            if(timer%150 == 1){
+                            if(timer%80 == 1 && Random(3) == 1){
                                 enemyball(enemy[i]);
+                            }
+                            break;
+                        case 3:
+                            if(Random(150) == 1){
+                                enemylaser(enemy[i]);
                             }
                             break;
                         default:
@@ -777,7 +836,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 //            spawnsmallenemy(56<<FIX,30<<FIX,0,8,1,0,0);
 //            spawnsmallenemy(36<<FIX,30<<FIX,0,8,1,0,0);
 //        }
-
+        // waves are every 6 seconds. We need 20 total waves
         if(first || timer%180 == 1){
             switch(wave)
             {
@@ -787,6 +846,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 1:
+                    Sound_Fastinvader1();
                     spawnline(YELLOWWAVE);
                     wave++;
                     break;
@@ -798,6 +858,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 4:
+                    Sound_Fastinvader2();
                     spawnbird();
                     spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
                     wave++;
@@ -806,10 +867,15 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 6:
+                    Sound_Fastinvader3();
                     spawnx(GREENWAVE);
+                    spawnshiftenemy(60<<FIX,60<<FIX,0,1,1,1);
+                    spawnshiftenemy(80<<FIX,80<<FIX,0,1,1,0);
+                    spawnshiftenemy(100<<FIX,100<<FIX,0,1,1,1);
                     wave++;
                     break;
                 case 7:
+                    Sound_Fastinvader4();
                     spawnx(GREENWAVE);
                     wave++;
                     break;
@@ -819,7 +885,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         }
 
         // if the level is done, end the game and set the victory status to true.
-        if(timer == 30*120){
+        if(timer == 30*6*8){
             win = 1;
             end = 1;
         }
