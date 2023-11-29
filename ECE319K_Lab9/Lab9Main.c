@@ -68,6 +68,7 @@ uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
 uint32_t first = 1;
+uint32_t weirdflag = 0;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
@@ -203,14 +204,13 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
 // ENEMY SHOOT SPAWNS
 
 
-// TODO: rework shot spawns to be more similar to the enemy spawn system
 // spawns a ball starting at the provided enemy, and tracks the player for 5 seconds.
 void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
     for(int i = 0; i<NUMMISSILES; i++){
         if(missiles[i].life == 0){
             missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
             missiles[i].x = enemy.x;   //start at center of player
-            missiles[i].y = enemy.y + (4<<FIX);
+            missiles[i].y = enemy.y + (13<<FIX);
             missiles[i].color = enemy.color;
             missiles[i].image[0][0] = GreenBall;
             missiles[i].image[1][0] = YellowBall;
@@ -242,13 +242,19 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
             missiles[i].h = 9;
             missiles[i].x = enemy.x+((enemy.w/2)<<FIX);   //start at center of player
             missiles[i].y = enemy.y + (enemy.h<<FIX);
+            if(missiles[i].y > 159<<FIX){
+                missiles[i].life = 0;
+                break;
+
+            }
             missiles[i].color = enemy.color;
             missiles[i].image[0][0] = LaserGreen0;
             missiles[i].image[1][0] = LaserYellow0;
             missiles[i].blankimage = eLaser0;
             missiles[i].vx = 0;
             missiles[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
-            missiles[i].enemylaser = 1;
+            missiles[i].enemylaser = 1; // THIS IS USED DO NOT DELETE
+            missiles[i].tracking = 0;
             i++;
             if(i == NUMMISSILES){
                 i = 0;
@@ -286,7 +292,19 @@ void spawnbird(){
 // void spawncircle()
 
 // 2-4 enemies that start from bottom corners and race to the top
-// void spawnx()
+void spawnx(uint32_t color){
+    spawnsmallenemy(8<<FIX,10<<FIX,4,5,1,color,1);
+    spawnsmallenemy(8<<FIX,25<<FIX,4,5,1,color,1);
+
+    spawnsmallenemy(8<<FIX,120<<FIX,4,-5,1,color,1);
+    spawnsmallenemy(8<<FIX,105<<FIX,4,-5,1,color,1);
+
+    spawnsmallenemy(108<<FIX,10<<FIX,-4,5,1,color,1);
+    spawnsmallenemy(108<<FIX,25<<FIX,-4,5,1,color,1);
+
+    spawnsmallenemy(108<<FIX,105<<FIX,-4,-5,1,color,1);
+    spawnsmallenemy(108<<FIX,120<<FIX,-4,-5,1,color,1);
+}
 
 // boss will take a ton of hits, shoot big balls in all directions.
 // void spawnboss()
@@ -423,7 +441,7 @@ void move(void){
     // move lasers
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
-            if(lasers[j].y >= 160<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
+            if(lasers[j].y >= 159<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
                 //if bullet is offscreen, despawn
                 lasers[j].life = 2;
             }
@@ -439,22 +457,28 @@ void move(void){
     // move missiles
     for(int j = 0; j < NUMMISSILES; j++){
         if(missiles[j].life == 1){
-            if(missiles[j].y >= 157<<FIX || missiles[j].y <= 0 || missiles[j].x >= 128<<FIX || missiles[j].x < 0){
+            if(missiles[j].y >= 159<<FIX || missiles[j].y <= 0 || missiles[j].x >= 128<<FIX || missiles[j].x < 0){
                 //if bullet is offscreen, despawn
                 missiles[j].life = 2;
             }
             else{
-                if(missiles[j].tracking && timer%6 == 0 && timer - missiles[j].spawntime < 150){
-                    // (player-enemy) = velocity*time?
-                    missiles[j].vx = (player.x - missiles[j].x)/15;
-                    missiles[j].vy = (player.y - missiles[j].y)/15;
+                if(missiles[j].tracking == 1){
+                    if((timer - missiles[j].spawntime < 150)){
+                        // (player-enemy) = velocity*time?
+                        if(timer%6 == 1){
+                            missiles[j].vx = (player.x - missiles[j].x)/15;
+                            missiles[j].vy = (player.y - missiles[j].y)/15;
+                        }
+
+                    }
+                    else{
+                        missiles[j].life = 2;
+                    }
                 }
-                else{
-                    missiles[j].lastx = missiles[j].x;
-                    missiles[j].lasty = missiles[j].y;
-                    missiles[j].x += missiles[j].vx;
-                    missiles[j].y += missiles[j].vy;
-                }
+                missiles[j].lastx = missiles[j].x;
+                missiles[j].lasty = missiles[j].y;
+                missiles[j].x += missiles[j].vx;
+                missiles[j].y += missiles[j].vy;
             }
         }
     }
@@ -462,12 +486,12 @@ void move(void){
     // move enemies, then run collision checks
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
-                if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX){
+                if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX || enemy[i].y <= 3<<FIX || enemy[i].x <= 0<<FIX){
                  // this is space invaders logic, enemies 'win' when they move to bottom
 //                    enemy[i].life = 2;
                     enemy[i].life = 1;
 //                    end = 1;    //used to end game in main if aliens win
-//                    Sound_Killed();
+                    Sound_Killed();
 
                 }
                 else{       //else move enemies
@@ -490,7 +514,9 @@ void move(void){
                       // if collision occurred and color matched, kill the enemy. In all collisions despawn laser sprite.
                            if(lasers[j].color == enemy[i].color && lasers[j].enemylaser == 0){
                                enemy[i].life--;
-                               score += (enemy[i].type*10)+10;
+                               if(enemy[i].life == 1){
+                                   score += (enemy[i].type*10)+10;
+                               }
                            }
                            else{
                                //TODO: dink sound?
@@ -508,7 +534,7 @@ void move(void){
                       if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)){
                          // checking for enemy bullet collision with player
                           if(player.color != missiles[u].color && !player.invincible){
-                              player.life--;
+                               player.life--;
                                missiles[u].life = 2;
                                player.invincible = 1;
                                player.iframe = timer;
@@ -536,33 +562,43 @@ void move(void){
                    Sound_Explosion();
                }
 
-               // Enemy shooting system
-               // if enemy type is one, RNG shoot
-               // if enemy type is two, periodic shooting
-               switch(enemy[i].type){
-                   case 1:
-                       if(Random(150) == 1){
-                           enemylaser(enemy[i]);
-                       }
-                       break;
-                   case 2:
-                       if(timer%150 == 1){
-                           enemyball(enemy[i]);
-                       }
-                       break;
-                   // this will be for passive enemies
-                   default:
-                       break;
-               }
             }
     }
+
+    // Enemy shooting system
+    // TODO: this can cause crashing super easily, not sure why
+    for(int i = 0; i<NUMENEMIES; i++){
+        if(enemy[i].life > 1){
+            switch(enemy[i].type){
+                        // this will be for passive enemies
+                        case 0:
+                            break;
+                        // if enemy type is one, RNG shoot
+                        //laser shooting breaks the system
+                        case 1:
+                            if(Random(150) == 1){
+                                enemylaser(enemy[i]);
+                            }
+                            break;
+                        // if enemy type is two, periodic shooting
+                        case 2:
+                            if(timer%150 == 1){
+                                enemyball(enemy[i]);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+        }
+    }
+
 }
 
 // Methods related to drawing to the screen
 
 // Background is just a way to hold a temporary frame buffer, don't worry about it!
 // set to the size of your biggest sprite (w*h) (could change in future)
-uint16_t background[60*60];
+uint16_t background[(60*60)];
 
 // all parameters are in pixels
 void Fill(int32_t x, int32_t y, int32_t xsize, int32_t ysize){
@@ -736,7 +772,12 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         timer++;
 
         // after about nine seconds, spawn a wave
-        if(first || timer%270 == 1){
+//        if(timer%30 == 1){
+//            spawnsmallenemy(56<<FIX,30<<FIX,0,8,1,0,0);
+//            spawnsmallenemy(36<<FIX,30<<FIX,0,8,1,0,0);
+//        }
+
+        if(first || timer%180 == 1){
             switch(wave)
             {
                 case 0:
@@ -749,15 +790,26 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 2:
-                    spawnbird();
+                    spawnline(GREENWAVE);
                     wave++;
                     break;
                 case 3:
-                    spawnline(GREENWAVE);
-                    spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
                     wave++;
                     break;
                 case 4:
+                    spawnbird();
+                    spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
+                    wave++;
+                    break;
+                case 5:
+                    wave++;
+                    break;
+                case 6:
+                    spawnx(GREENWAVE);
+                    wave++;
+                    break;
+                case 7:
+                    spawnx(GREENWAVE);
                     wave++;
                     break;
                 default:
@@ -1044,6 +1096,17 @@ int main(void){ // final main
   // initialize interrupts on TimerG12 at 30 Hz
   TimerG12_IntArm(80000000/30,3); // low priority interrupt, lower than 3 is higher prio
   // initialize all data structures
+
+//  spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
+//  spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,GREENWAVE,1);
+//  spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
+//  spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,GREENWAVE,1);
+//  spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
+//  spawnsmallenemy(16<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
+//  spawnsmallenemy(36<<FIX,100<<FIX,0,2,1,GREENWAVE,1);
+//  spawnsmallenemy(56<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
+//  spawnsmallenemy(76<<FIX,100<<FIX,0,2,1,GREENWAVE,1);
+//  spawnsmallenemy(96<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
   __enable_irq();
   while(1){
     while(Flag){
@@ -1055,9 +1118,9 @@ int main(void){ // final main
                 redrawbg = 0;
             }
 
-            ST7735_SetCursor(1, 3+7);
+            ST7735_SetCursor(1, 1+7);
             ST7735_OutString((char *)Start[Language]);
-            ST7735_SetCursor(1, 4+7);
+            ST7735_SetCursor(1, 2+7);
             ST7735_OutString((char *)Start2[Language]);
 
             ST7735_SetCursor(1, 6+7);
