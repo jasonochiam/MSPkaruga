@@ -293,11 +293,11 @@ void bossattack(sprite_t enemy){     //will initialize a new bullet specifically
 //    bosslaser(enemy.x+width-(10<<FIX),enemy.y-(5<<FIX), 0, 5, 1, enemy.color);
 //    bosslaser(enemy.x+width,enemy.y, 0, 5, 1, enemy.color);
 //    bosslaser(enemy.x+width+(10<<FIX),enemy.y-(5<<FIX), 0, 5, 1, enemy.color);
-    bossball(enemy.x+width-(20<<FIX),enemy.y-(15<<FIX), -2, 6, 1, enemy.color);
-    bossball(enemy.x+width-(35<<FIX),enemy.y-(5<<FIX), -2, 6, 1, enemy.color);
+    bossball(enemy.x+width-(20<<FIX),enemy.y, 0, 6, 1, enemy.color);
+    bossball(enemy.x+width-(40<<FIX),enemy.y, 0, 6, 1, enemy.color);
     bossball(enemy.x+width,enemy.y, 0, 6, 1, enemy.color);
-    bossball(enemy.x+width+(20<<FIX),enemy.y-(5<<FIX), 2, 6, 1, enemy.color);
-    bossball(enemy.x+width+(35<<FIX),enemy.y-(15<<FIX), 2, 6, 1, enemy.color);
+    bossball(enemy.x+width+(20<<FIX),enemy.y, 0, 6, 1, enemy.color);
+    bossball(enemy.x+width+(40<<FIX),enemy.y, 0, 6, 1, enemy.color);
 }
 
 
@@ -978,6 +978,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 2:
+                    Sound_Fastinvader2();
                     spawnline(GREENWAVE);
                     wave++;
                     break;
@@ -1002,9 +1003,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 7:
-                    wave++;
-                    break;
-                case 8:
+                    Sound_Fastinvader2();
                     spawnshiftenemy(60<<FIX,30<<FIX,0,3,1,0, 1);        //reverse direction
                     spawnshiftenemy(60<<FIX,20<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
                     spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,0, 1);
@@ -1016,10 +1015,10 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
                     wave++;
                     break;
-                case 9:
+                case 8:
                     wave++;
                     break;
-                case 10:
+                case 9:
                     Sound_Fastinvader4();
                     spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 1);
                     spawnx(GREENWAVE);
