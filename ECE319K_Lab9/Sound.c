@@ -13,7 +13,7 @@
 
 
 uint32_t SoundIndex;
-uint8_t *ptsound;
+const uint8_t *ptsound;
 uint32_t soundsize;
 
 void SysTick_IntArm(uint32_t period, uint32_t priority){    //typical intarm

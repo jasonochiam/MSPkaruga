@@ -111,7 +111,7 @@ struct sprite{
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP+1]; // a 2d array of images. X axis is damage level and Y axis is color
-    const uint16_t *image2; // the default image for the sprite, in cases where I haven't implemented multiple damage images
+//    const uint16_t *image2; // the default image for the sprite, in cases where I haven't implemented multiple damage images
     const uint16_t *blankimage; // the image to render over where the sprite was (needed for fast movement)
     const uint16_t *swapanimation; // points to swap animation frames for the player
     // TODO: more image pointers as needed for animation frames, other status values
@@ -121,7 +121,7 @@ struct sprite{
 
 typedef struct sprite sprite_t;
 
-#define NUMENEMIES 60
+#define NUMENEMIES 50
 sprite_t enemy[NUMENEMIES];
 #define NUMLASERS 50
 sprite_t lasers[NUMLASERS];
@@ -138,7 +138,7 @@ void enemy_init(void){
         enemy[i].life = 2; // spawn an enemy at (n-1) hp
         enemy[i].x = (32+32*i)<<FIX;
         enemy[i].y = 10<<FIX;
-        enemy[i].image2 = SmallEnemy10pointA;
+//        enemy[i].image2 = SmallEnemy10pointA;
         enemy[i].blankimage = SmallEnemy10pointAblank;
         enemy[i].vx = 0;
         enemy[i].vy = 1; // NOTE: this is 1<<FIX pixel per frame moving DOWN.
@@ -159,7 +159,6 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].y = y;
             enemy[i].image[0][0] = SmallEnemy10pointGreenA;
             enemy[i].image[1][0] = SmallEnemy10pointYellowA;
-            enemy[i].image2 = SmallEnemy10pointA;
             enemy[i].blankimage = SmallEnemy10pointAblank;
             enemy[i].vx = vx;
             enemy[i].vy = vy;
@@ -167,6 +166,7 @@ void spawnsmallenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].h = 10;
             enemy[i].type = type;
 //            enemylaser(enemy[i]);
+//            enemyball(enemy[i]);
             break;
         }
 
@@ -185,7 +185,7 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
              enemy[i].y = y;
              enemy[i].image[0][0] = SmallEnemy20pointGreenA;
              enemy[i].image[1][0] = SmallEnemy20pointYellowA;
-             enemy[i].image2 = SmallEnemy10pointA;
+//             enemy[i].image2 = SmallEnemy10pointA;
              enemy[i].blankimage = SmallEnemy10pointAblank;
              enemy[i].vx = vx;
              enemy[i].vy = vy;
@@ -202,60 +202,65 @@ void spawnmediumenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp
 
 // ENEMY SHOOT SPAWNS
 
-// spawns a ball starting at the provided enemy, and tracks the player for 5 seconds. If absorbed add to the player score?
+
+// TODO: rework shot spawns to be more similar to the enemy spawn system
+// spawns a ball starting at the provided enemy, and tracks the player for 5 seconds.
 void enemyball(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
- static uint8_t i = 0;
- if(i < NUMMISSILES){
-     missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-     missiles[i].x = enemy.x;   //start at center of player
-     missiles[i].y = enemy.y + (4<<FIX);
-     missiles[i].color = enemy.color;
-     missiles[i].image[0][0] = GreenBall;
-     missiles[i].image[1][0] = YellowBall;
-     missiles[i].blankimage = eBall;
-     // math: player x - enemy x / time to travel
-     // make x velocity sinusoidal?
-     missiles[i].vx = (player.x - enemy.x)/15;
-     missiles[i].vy = (player.y - enemy.y)/15; // NOTE: -10 is 1 pixel per frame moving DOWN.
-//     missiles[i].w = 14;
-     missiles[i].w = 10;
-//     missiles[i].h = 14;
-     missiles[i].h = 10;
-     missiles[i].spawntime = timer;
-     missiles[i].tracking = 1;
-     missiles[i].enemylaser = 1;
-     i++;
-     if(i == NUMMISSILES){
-         i = 0;
-     }
- }
+    for(int i = 0; i<NUMMISSILES; i++){
+        if(missiles[i].life == 0){
+            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+            missiles[i].x = enemy.x;   //start at center of player
+            missiles[i].y = enemy.y + (4<<FIX);
+            missiles[i].color = enemy.color;
+            missiles[i].image[0][0] = GreenBall;
+            missiles[i].image[1][0] = YellowBall;
+            missiles[i].blankimage = eBall;
+            // math: player x - enemy x / time to travel
+            // make x velocity sinusoidal?
+            missiles[i].vx = (player.x - enemy.x)/15;
+            missiles[i].vy = (player.y - enemy.y)/15; // NOTE: -10 is 1 pixel per frame moving DOWN.
+            missiles[i].w = 14;
+            missiles[i].h = 13;
+            missiles[i].spawntime = timer;
+            missiles[i].tracking = 1;
+            missiles[i].enemylaser = 1;
+            missiles[i].type = 1;
+            i++;
+            if(i == NUMMISSILES){
+                i = 0;
+            }
+            break;
+        }
+    }
 }
 
 void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
- static uint8_t i = 0;
- if(i < NUMMISSILES){
-     missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-     missiles[i].w = 2;
-     missiles[i].h = 9;
-     missiles[i].x = enemy.x+((enemy.w/2)<<FIX);   //start at center of player
-     missiles[i].y = enemy.y + (enemy.h<<FIX);
-     missiles[i].color = enemy.color;
-     missiles[i].image[0][0] = LaserGreen0;
-     missiles[i].image[1][0] = LaserYellow0;
-     missiles[i].blankimage = eLaser0;
-     missiles[i].vx = 0;
-     missiles[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
-     missiles[i].enemylaser = 1;
-     i++;
-     if(i == NUMMISSILES){
-         i = 0;
-     }
-  }
+    for(int i = 0; i<NUMMISSILES; i++){
+        if(missiles[i].life == 0){
+            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+            missiles[i].w = 2;
+            missiles[i].h = 9;
+            missiles[i].x = enemy.x+((enemy.w/2)<<FIX);   //start at center of player
+            missiles[i].y = enemy.y + (enemy.h<<FIX);
+            missiles[i].color = enemy.color;
+            missiles[i].image[0][0] = LaserGreen0;
+            missiles[i].image[1][0] = LaserYellow0;
+            missiles[i].blankimage = eLaser0;
+            missiles[i].vx = 0;
+            missiles[i].vy = 1<<FIX; // NOTE: -10 is 1 pixel per frame moving DOWN.
+            missiles[i].enemylaser = 1;
+            i++;
+            if(i == NUMMISSILES){
+                i = 0;
+            }
+            break;
+         }
+    }
 }
 
 
 // ENEMY FORMATION SPAWNS
-// TODO: at a wave spawn rate of 1 every 9 seconds,
+// TODO: at a wave spawn rate of 1 every 9 seconds, we need 13 or so enemies
 
 // spawns a line of basic enemies
 void spawnline(color){
@@ -291,12 +296,10 @@ void spawnbird(){
 
 // initialize player
 // WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
-// TODO: fix player hp system
 void player_init(void){
     player.x = player.lastx = 64<<FIX;
     player.y = player.lasty = 159<<FIX;
-    player.life = NUMHP; // 0 is 3/3 hp, 1 is 2/3 hp, 2 is 1/3 hp, 3 is dying, 4 is dead (despawned)
-    // 4 is 3/3 hp, 3 is 2/3 hp, 2 is 1/3 hp, 1 is dying, 0 is dead (despawned)
+    player.life = NUMHP; // 4 is 3/3 hp, 3 is 2/3 hp, 2 is 1/3 hp, 1 is dying, 0 is dead (despawned)
     player.image[0][0] = PlayerShip0;
     player.image[0][1] = PlayerShip1;
     player.image[0][2] = PlayerShip2;
@@ -418,7 +421,6 @@ void move(void){
     }
 
     // move lasers
-    // TODO: lasers don't spawn at bottom of the screen
     for(int j = 0; j < NUMLASERS; j++){
         if(lasers[j].life == 1){
             if(lasers[j].y >= 160<<FIX || lasers[j].y <= 0 || lasers[j].x >= 128<<FIX || lasers[j].x < 0){
@@ -465,7 +467,7 @@ void move(void){
 //                    enemy[i].life = 2;
                     enemy[i].life = 1;
 //                    end = 1;    //used to end game in main if aliens win
-                    Sound_Killed();
+//                    Sound_Killed();
 
                 }
                 else{       //else move enemies
@@ -504,8 +506,7 @@ void move(void){
                    if(missiles[u].life == 1){
                       // recall that the 'position' of a sprite is the top left corner
                       if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)){
-                                             // checking for enemy bullet collision with player
-                                             // TODO: add checking for both bullet type and color
+                         // checking for enemy bullet collision with player
                           if(player.color != missiles[u].color && !player.invincible){
                               player.life--;
                                missiles[u].life = 2;
@@ -574,7 +575,7 @@ void Fill(int32_t x, int32_t y, int32_t xsize, int32_t ysize){
 
 // x position of sprite, y position of sprite, pointer to sprite image, width of sprite, height of sprite (in pixels)
 void DrawOverSpace(int32_t x, int32_t y, const uint16_t *image, int32_t w, int32_t h){
-    //Fill(x,y,w,h);
+    Fill(x,y,w,h);
     for(int j=0; j<(w*h); j++){
         uint16_t pixel = image[j];
         if(pixel){
@@ -594,12 +595,19 @@ void EraseOverSpace(int32_t x, int32_t y, int32_t w, int32_t h){
 // Always draw in this order: enemies->->player->projectiles
 void draw(void){
     //drawings for enemies that takes care of despawned enemies
-    // TODO: draw score with SmallFont_OutHorizontal from the headers
+
 
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life > 1){
-            EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
-                                          enemy[i].w, enemy[i].h);
+            int32_t xdiff = enemy[i].x-enemy[i].lastx;
+            int32_t ydiff = enemy[i].y-enemy[i].lasty;
+            if(ydiff<0) ydiff = -ydiff;
+            if(xdiff<0) xdiff = -xdiff;
+
+            if((xdiff > 2<<FIX) || (ydiff > 1<<FIX)){
+                EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
+                                                      enemy[i].w, enemy[i].h);
+            }
             DrawOverSpace(enemy[i].x>>FIX, enemy[i].y>>FIX,
                               enemy[i].image[enemy[i].color][0],
                               enemy[i].w, enemy[i].h);
@@ -633,9 +641,18 @@ void draw(void){
     //missile drawings with the same system as enemies
     for(int i = 0; i<NUMMISSILES; i++){
             if(missiles[i].life == 1){
-                EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
-                                                  missiles[i].w, missiles[i].h);
-
+                int32_t xdiff = missiles[i].lastx - missiles[i].x;
+                int32_t ydiff = missiles[i].lasty - missiles[i].y;
+                if(xdiff<0) xdiff = -xdiff;
+                if(ydiff<0) ydiff = -ydiff;
+                if((xdiff > 2<<FIX || ydiff > 2<<FIX) && missiles[i].type){
+                    EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
+                                  missiles[i].w, missiles[i].h);
+                }
+                else{
+                    EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
+                                   missiles[i].w, missiles[i].h);
+                }
                 DrawOverSpace(missiles[i].x>>FIX, missiles[i].y>>FIX,
                                                   missiles[i].image[missiles[i].color][0],
                                                   missiles[i].w, missiles[i].h);
@@ -648,15 +665,20 @@ void draw(void){
     }
 
     // draw the player with appropriate damage levels
-    // TODO: flicker, this one will be tough to solve
-    EraseOverSpace(player.lastx>>FIX, player.lasty>>FIX,
-                              player.w, player.h);
-    DrawOverSpace(player.x>>FIX, player.y>>FIX,
-                                              player.image[player.color][NUMHP-player.life],
-                                              player.w, player.h);
+    int32_t xdiff = player.lastx - player.x;
+    int32_t ydiff = player.lasty - player.y;
+    if(xdiff<0) xdiff = -xdiff;
+    if(ydiff<0) ydiff = -ydiff;
+    if(xdiff > 2<<FIX || ydiff){
+        EraseOverSpace(player.lastx>>FIX, player.lasty>>FIX,
+                                      player.w, player.h);
+    }
 
-    ST7735_SetCursor(16, 0);
-    ST7735_OutUDec4(score);
+    DrawOverSpace(player.x>>FIX, player.y>>FIX,
+                              player.image[player.color][NUMHP-player.life],
+                              player.w, player.h);
+
+    SmallFont_OutVertical(score, 104, 6);
 }
 
 // games engine runs at 30Hz
@@ -789,9 +811,9 @@ const char Language_French[]="Fran\x87" "ais";
 const char Title_English[] = "Switch Force";
 const char Title_Spanish[] = "Fuerza de Cambio";
 
-const char Start_English[] = "Press the right";
+const char Start_English[] = "Push right to start";
 const char Start_Spanish[] = "Pulsa el bot\xA2n";
-const char Start2_English[] = "button to start";
+const char Start2_English[] = "";
 const char Start2_Spanish[] = "derecho para jugar";
 
 const char Select_English[] = "Para Espa\xA4ol, pulsa";
@@ -853,12 +875,13 @@ const char *Status3[2][2] = {
 const char *Score[2] = {Score_English, Score_Spanish};
 
 
-
 const char *Phrases[3][4]={
   {Hello_English,Hello_Spanish,Hello_Portuguese,Hello_French},
   {Goodbye_English,Goodbye_Spanish,Goodbye_Portuguese,Goodbye_French},
   {Language_English,Language_Spanish,Language_Portuguese,Language_French}
 };
+
+
 // use main1 to observe special characters
 int main1(void){ // main1
     char l;
@@ -1007,8 +1030,8 @@ int main(void){ // final main
     // ST7735_InitR(INITR_REDTAB); inside ST7735_InitPrintf()
   //ST7735_FillScreen(ST7735_BLACK);
 
-  ST7735_DrawBitmap(30, 110, titleptr, 60, 60);         //loading screen
-  Clock_Delay1ms(3000);
+//  ST7735_DrawBitmap(30, 110, titleptr, 60, 60);         //loading screen
+//  Clock_Delay1ms(3000);
 
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit(); //PB18 = ADC1 channel 5, slidepot
@@ -1025,27 +1048,23 @@ int main(void){ // final main
   while(1){
     while(Flag){
         if(title){
-            // TODO: title screen logo. If you make anything from scratch let it be this
             if(redrawbg){
                 ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
-                EraseOverSpace(30,70,60,60);
-                DrawOverSpace(30, 70, titleptr, 60, 60);
+                EraseOverSpace(35,70,60,60);
+                DrawOverSpace(35, 70, titleptr, 60, 60);
                 redrawbg = 0;
             }
-            //ST7735_SetTextColor(ST7735_GREEN);
-//            ST7735_SetCursor(5-(2*Language), 1);
-//            ST7735_OutString((char *)Title[Language]);
 
-            ST7735_SetCursor(1, 3+5);
+            ST7735_SetCursor(1, 3+7);
             ST7735_OutString((char *)Start[Language]);
-            ST7735_SetCursor(1, 4+5);
+            ST7735_SetCursor(1, 4+7);
             ST7735_OutString((char *)Start2[Language]);
 
-            ST7735_SetCursor(1, 6+5);
+            ST7735_SetCursor(1, 6+7);
             ST7735_OutString((char *)Select[Language]);
-            ST7735_SetCursor(1, 7+5);
+            ST7735_SetCursor(1, 7+7);
             ST7735_OutString((char *)Language2[Language]);
-            ST7735_SetCursor(1, 8+5);
+            ST7735_SetCursor(1, 8+7);
 
             Flag = 0;
         }
@@ -1075,7 +1094,6 @@ int main(void){ // final main
         ST7735_FillScreen(0x0000);   // set screen to black
         // draw a funny valvano thing
           ST7735_SetCursor(6-(2*Language), 1);
-          // TODO: this text color code just doesn't work.
           if(win){
               textcolor = (ST7735_GREEN);
           }
@@ -1083,8 +1101,6 @@ int main(void){ // final main
               textcolor = (ST7735_RED);
           }
           ST7735_DrawString(6-(2*Language),1,(char *)GameOver[Language],textcolor);
-//          ST7735_OutString((char *)GameOver[Language]);
-//          ST7735_SetTextColor(ST7735_YELLOW);
           ST7735_SetCursor(1, 11);
           ST7735_OutString((char *)Status0[Language]);
           ST7735_OutString((char *)Status1[win][Language]);
