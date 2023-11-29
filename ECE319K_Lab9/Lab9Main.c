@@ -77,6 +77,7 @@ int32_t shiftvelocity = 1;
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
 const uint16_t *titleptr = titlescreen; // pointer to title image
+const uint16_t *valvanoptr = valvanosad;
 uint16_t textcolor = 0;
 
 
@@ -1387,11 +1388,34 @@ int main(void){ // final main
           ST7735_SetCursor(6-(2*Language), 1);
           if(win){
               textcolor = (ST7735_GREEN);
+              valvanoptr = valvanohappy;
+              ST7735_DrawBitmap(44, 80, valvanoptr, 40, 52);
           }
           else{
               textcolor = (ST7735_RED);
+              ST7735_DrawBitmap(44, 80, valvanoptr, 40, 50);
           }
+
+
           ST7735_DrawString(6-(2*Language),1,(char *)GameOver[Language],textcolor);
+          ST7735_SetCursor(1, 9);
+          if(!Language){
+              if(win){
+                  ST7735_OutString("Valvano is happy!");
+              }
+              else{
+                  ST7735_OutString("Valvano is sad!");
+              }
+          }
+          else{
+              if(win){
+                  ST7735_OutString("Valvano est\xA0 contento");
+              }
+              else{
+                  ST7735_OutString("Valvano est\xA0 triste");
+              }
+
+          }
           ST7735_SetCursor(1, 11);
           ST7735_OutString((char *)Status0[Language]);
           ST7735_OutString((char *)Status1[win][Language]);
