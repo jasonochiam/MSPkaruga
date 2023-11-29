@@ -70,6 +70,8 @@ uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
 uint32_t first = 1;
 uint32_t titleflag = 0;
+uint32_t bosscolor = 1;
+uint32_t bosskilled = 0;
 int32_t shiftvelocity = 1;
 
 // Misc
@@ -226,38 +228,76 @@ void spawnboss(uint32_t x, uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint
 }
 
 // ENEMY SHOOT SPAWNS
-//void bossball(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
-//    for(int i = 0; i<NUMMISSILES; i++){
-//        if(missiles[i].life == 0){
-//            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
-//            missiles[i].x = x;   //start at center of player
-//            missiles[i].y = y;
-//            missiles[i].color = color;
-//            missiles[i].image[0][0] = GreenBall;
-//            missiles[i].image[1][0] = YellowBall;
-//            missiles[i].blankimage = eBall;
-//            // math: player x - enemy x / time to travel
-//            // make x velocity sinusoidal?
-//            missiles[i].vx = (player.x - enemy.x)/15;
-//            missiles[i].vy = (player.y - enemy.y)/15; // NOTE: -10 is 1 pixel per frame moving DOWN.
-//            missiles[i].w = 14;
-//            missiles[i].h = 13;
-//            missiles[i].spawntime = timer;
-//            missiles[i].tracking = 0;
-//            missiles[i].enemylaser = 1;
-//            missiles[i].type = 1;
-//            i++;
-//            if(i == NUMMISSILES){
-//                i = 0;
-//            }
-//            break;
-//        }
-//    }
-//}
+void bosslaser(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+    for(int i = 0; i<NUMMISSILES; i++){
+        if(missiles[i].life == 0){
+            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+            missiles[i].x = x;   //start at center of player
+            missiles[i].y = y;
+            missiles[i].color = color;
+            missiles[i].image[0][0] = LaserGreen0;
+            missiles[i].image[1][0] = LaserYellow0;
+            missiles[i].blankimage = eLaser0;
+            // math: player x - enemy x / time to travel
+            // make x velocity sinusoidal?
+            missiles[i].vx = vx;
+            missiles[i].vy = vy; // NOTE: -10 is 1 pixel per frame moving DOWN.
+            missiles[i].w = 2;
+            missiles[i].h = 9;
+            missiles[i].spawntime = timer;
+            missiles[i].tracking = 0;
+            missiles[i].enemylaser = 1;
+            missiles[i].type = 0;
+            i++;
+            if(i == NUMMISSILES){
+                i = 0;
+            }
+            break;
+        }
+    }
+}
 
-//void bossattack(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
-//
-//}
+void bossball(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+    for(int i = 0; i<NUMMISSILES; i++){
+        if(missiles[i].life == 0){
+            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+            missiles[i].x = x;   //start at center of player
+            missiles[i].y = y;
+            missiles[i].color = color;
+            missiles[i].image[0][0] = GreenBall;
+            missiles[i].image[1][0] = YellowBall;
+            missiles[i].blankimage = eBall;
+            // math: player x - enemy x / time to travel
+            // make x velocity sinusoidal?
+            missiles[i].vx = vx;
+            missiles[i].vy = vy; // NOTE: -10 is 1 pixel per frame moving DOWN.
+            missiles[i].w = 14;
+            missiles[i].h = 13;
+            missiles[i].spawntime = timer;
+            missiles[i].tracking = 0;
+            missiles[i].enemylaser = 1;
+            missiles[i].type = 1;
+            i++;
+            if(i == NUMMISSILES){
+                i = 0;
+            }
+            break;
+        }
+    }
+}
+
+//spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 1);
+void bossattack(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+    int32_t width = (enemy.w<<FIX)/2;
+//    bosslaser(enemy.x+width-(10<<FIX),enemy.y-(5<<FIX), 0, 5, 1, enemy.color);
+//    bosslaser(enemy.x+width,enemy.y, 0, 5, 1, enemy.color);
+//    bosslaser(enemy.x+width+(10<<FIX),enemy.y-(5<<FIX), 0, 5, 1, enemy.color);
+    bossball(enemy.x+width-(20<<FIX),enemy.y-(15<<FIX), -2, 6, 1, enemy.color);
+    bossball(enemy.x+width-(35<<FIX),enemy.y-(5<<FIX), -2, 6, 1, enemy.color);
+    bossball(enemy.x+width,enemy.y, 0, 6, 1, enemy.color);
+    bossball(enemy.x+width+(20<<FIX),enemy.y-(5<<FIX), 2, 6, 1, enemy.color);
+    bossball(enemy.x+width+(35<<FIX),enemy.y-(15<<FIX), 2, 6, 1, enemy.color);
+}
 
 
 
@@ -567,7 +607,6 @@ void move(void){
     }
 
     // move enemies, then run collision checks
-    // TODO: boss
     for(int i = 0; i<NUMENEMIES; i++){
             if(enemy[i].life > 1){     //check for bullet collision here with a nested for loop comparing dimensions of each bullet active and each enemy
                 if(enemy[i].y >= 157<<FIX || enemy[i].x >= 128<<FIX || enemy[i].y <= 3<<FIX || enemy[i].x <= 0<<FIX){
@@ -579,6 +618,7 @@ void move(void){
 
                 }
                 else{       //else move enemies
+                    // IF the enemy is a shift type
                     if(enemy[i].type == 3){
                         enemy[i].vx = 2*shiftvelocity;
                         enemy[i].vy = 0;
@@ -596,7 +636,7 @@ void move(void){
                        // recall that the 'position' of a sprite is the top left corner
                        if( (enemy[i].type == 4)
                                && ( lasers[j].x <= (enemy[i].x + (enemy[i].w<<FIX)) ) && (lasers[j].x >= (enemy[i].x))
-                               && ( lasers[j].y <= (enemy[i].y + (enemy[i].h/2<<FIX))) && (lasers[j].y >= (enemy[i].y))){
+                               && ( lasers[j].y <= (enemy[i].y - (enemy[i].h/2<<FIX))) && (lasers[j].y >= (enemy[i].y))){
                            enemy[i].life--;
                            if(enemy[i].life == 1){
                                score += (enemy[i].type*10)+10;
@@ -679,7 +719,7 @@ void move(void){
                             break;
                         // if enemy type is two, periodic shooting
                         case 2:
-                            if(timer%80 == 1 && Random(3) == 1){
+                            if(timer%80 == 1 && Random(2) == 1){
                                 enemyball(enemy[i]);
                             }
                             break;
@@ -688,6 +728,11 @@ void move(void){
                                 enemylaser(enemy[i]);
                             }
                             break;
+                        case 4:
+                            if(timer % 60 == 1){
+                                enemy[i].color = bosscolor;
+                                bossattack(enemy[i]);
+                            }
                         default:
                             break;
                     }
@@ -754,6 +799,9 @@ void draw(void){
             EraseOverSpace(enemy[i].lastx>>FIX, enemy[i].lasty>>FIX,
                               enemy[i].w, enemy[i].h);
             enemy[i].life = 0;
+            if(enemy[i].type == 4){
+                bosskilled = 1;
+            }
         }
 
     }
@@ -783,14 +831,14 @@ void draw(void){
                 int32_t ydiff = missiles[i].lasty - missiles[i].y;
                 if(xdiff<0) xdiff = -xdiff;
                 if(ydiff<0) ydiff = -ydiff;
-                if((xdiff > 2<<FIX || ydiff > 2<<FIX) && missiles[i].type){
-                    EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
-                                  missiles[i].w, missiles[i].h);
-                }
-                else{
+//                if((xdiff > 2<<FIX || ydiff > 2<<FIX) && missiles[i].type > 0){
+//                    EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
+//                                  missiles[i].w, missiles[i].h);
+//                }
+//                else{
                     EraseOverSpace(missiles[i].lastx>>FIX, missiles[i].lasty>>FIX,
                                    missiles[i].w, missiles[i].h);
-                }
+//                }
                 DrawOverSpace(missiles[i].x>>FIX, missiles[i].y>>FIX,
                                                   missiles[i].image[missiles[i].color][0],
                                                   missiles[i].w, missiles[i].h);
@@ -837,6 +885,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 //    }
     if(lastshoot == 0 && shoots == 1){
         lasers_init();
+        Sound_Shoot();
     }
     lastshoot = shoots;
 
@@ -853,6 +902,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     swaps = Swap_In();
     if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1) && !title){
         changecolor();
+        Sound_Highpitch();
     }
     lastswaps = swaps;
 
@@ -875,13 +925,19 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 
         // after about nine seconds, spawn a wave
 //        if(timer%30 == 1){
-//            spawnsmallenemy(56<<FIX,30<<FIX,0,8,1,0,0);
-//            spawnsmallenemy(36<<FIX,30<<FIX,0,8,1,0,0);
+//            spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 0);
 //        }
 //        if(first){
 //            spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 0);
 //            first = 0;
 //        }
+        if(timer%120 == 1){
+            bosscolor++;
+            if(bosscolor > 1){
+                bosscolor = 0;
+            }
+        }
+
         // waves are every 6 seconds. We need 20 total waves
         if(first || timer%180 == 1){
             switch(wave)
@@ -932,7 +988,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         }
 
         // if the level is done, end the game and set the victory status to true.
-        if(timer == 30*6*9){
+        if(bosskilled){
             win = 1;
             end = 1;
         }
