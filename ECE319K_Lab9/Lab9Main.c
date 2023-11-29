@@ -111,6 +111,7 @@ struct sprite{
     uint32_t spawntime;
     uint32_t iframe;
     uint32_t invincible;
+    uint8_t reversedir;    //used to indicate direction, if 1, then enemy moves right first
     const uint16_t *redimage;
     const uint16_t *greenimage;
     const uint16_t *image[NUMCOLORS][NUMHP+1]; // a 2d array of images. X axis is damage level and Y axis is color
@@ -291,7 +292,7 @@ void enemyball(sprite_t enemy){     //will initialize a new bullet specifically 
     }
 }
 
-void spawnshiftenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+void spawnshiftenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color, uint8_t dir){
 // search the enemy array for an un-spawned enemy
 // TODO: what to do when enemy cap reached? replace oldest enemy
     for(int i = 0; i<NUMENEMIES; i++){
@@ -309,6 +310,12 @@ void spawnshiftenemy(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp,
             enemy[i].w = 16;
             enemy[i].h = 10;
             enemy[i].type = 3;
+            if(dir == 1){
+                enemy[i].reversedir = 1;
+            }
+            if(dir == 2){
+                enemy[i].reversedir = 2;
+            }
             break;
         }
 
@@ -580,8 +587,18 @@ void move(void){
                 }
                 else{       //else move enemies
                     if(enemy[i].type == 3){
+                        if (enemy[i].reversedir == 1){
+                            enemy[i].vx = -7*shiftvelocity;
+                            enemy[i].vy = 0;
+                        }
+                        else if(enemy[i].reversedir == 2){
+                            enemy[i].vx = 7*shiftvelocity;
+                            enemy[i].vy = 0;
+                        }
+                        else{
                         enemy[i].vx = 2*shiftvelocity;
                         enemy[i].vy = 0;
+                        }
                     }
                     enemy[i].lastx = enemy[i].x;
                     enemy[i].lasty = enemy[i].y;
@@ -879,7 +896,15 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 //            spawnsmallenemy(36<<FIX,30<<FIX,0,8,1,0,0);
 //        }
 //        if(first){
-//            spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 0);
+//            spawnshiftenemy(60<<FIX,60<<FIX,0,3,1,0, 1);        //reverse direction
+//            spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+//            spawnshiftenemy(60<<FIX,80<<FIX,0,3,1,0, 1);
+//            spawnshiftenemy(60<<FIX,70<<FIX,0,3,1,1, 2);
+//            spawnshiftenemy(60<<FIX,100<<FIX,0,3,1,0, 1);        //reverse direction
+//            spawnshiftenemy(60<<FIX,90<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+//            spawnshiftenemy(60<<FIX,120<<FIX,0,3,1,0, 1);
+//            spawnshiftenemy(60<<FIX,110<<FIX,0,3,1,1, 2);
+//            spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
 //            first = 0;
 //        }
         // waves are every 6 seconds. We need 20 total waves
@@ -915,12 +940,30 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                 case 6:
                     Sound_Fastinvader3();
                     spawnx(GREENWAVE);
-                    spawnshiftenemy(60<<FIX,60<<FIX,0,1,1,1);
-                    spawnshiftenemy(80<<FIX,80<<FIX,0,1,1,0);
-                    spawnshiftenemy(100<<FIX,100<<FIX,0,1,1,1);
+                    spawnshiftenemy(60<<FIX,60<<FIX,0,1,1,1,0);
+                    spawnshiftenemy(80<<FIX,80<<FIX,0,1,1,0,0);
+                    spawnshiftenemy(100<<FIX,100<<FIX,0,1,1,1,0);
                     wave++;
                     break;
                 case 7:
+                    wave++;
+                    break;
+                case 8:
+                    spawnshiftenemy(60<<FIX,30<<FIX,0,3,1,0, 1);        //reverse direction
+                    spawnshiftenemy(60<<FIX,20<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+                    spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,0, 1);
+                    spawnshiftenemy(60<<FIX,40<<FIX,0,3,1,1, 2);
+                    spawnshiftenemy(60<<FIX,70<<FIX,0,3,1,0, 1);        //reverse direction
+                    spawnshiftenemy(60<<FIX,60<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+                    spawnshiftenemy(60<<FIX,90<<FIX,0,3,1,0, 1);
+                    spawnshiftenemy(60<<FIX,80<<FIX,0,3,1,1, 2);
+                    spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
+                    wave++;
+                    break;
+                case 9:
+                    wave++;
+                    break;
+                case 10:
                     Sound_Fastinvader4();
                     spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 1);
                     spawnx(GREENWAVE);
