@@ -63,12 +63,13 @@ uint32_t click; // holds the joystick click for this frame
 uint32_t redrawplayer; // indicates to the render system if the player must be redrawn
 uint32_t redrawbg = 1; // tells the game to redraw the background (needed for title screen logic)
 uint32_t timer; // holds the current time, wonderful. Units: 33.3ms
+uint32_t titletimer; // holds the current time for the title screen. Units: 33.3ms
 uint32_t score; // the score for the level. Units: points
 uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
-uint32_t first = 1;
-uint32_t weirdflag = 0;
+uint32_t first;
+uint32_t titleflag = 0;
 
 // Misc
 const uint16_t *spaceptr = space; // pointer to space image
@@ -828,6 +829,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
             title = 0;
             redrawbg = 1;
         }
+        titletimer++;
     }
 
     // 6) set semaphore
@@ -864,14 +866,14 @@ const char Title_English[] = "Switch Force";
 const char Title_Spanish[] = "Fuerza de Cambio";
 
 const char Start_English[] = "Push right to start";
-const char Start_Spanish[] = "Pulsa el bot\xA2n";
-const char Start2_English[] = "";
+const char Start_Spanish[] = "Pulsa el bot\xA2n    ";
+const char Start2_English[] = "               ";
 const char Start2_Spanish[] = "derecho para jugar";
 
 const char Select_English[] = "Para Espa\xA4ol, pulsa";
 const char Select_Spanish[] = "For English, press";
-const char Language2_English[] = "el bot\xA2n arriba";
-const char Language2_Spanish[] = "up";
+const char Language2_English[] = "el bot\xA2n arriba    ";
+const char Language2_Spanish[] = "up                ";
 
 
 const char *Title[2] = {Title_English, Title_Spanish};
@@ -1083,7 +1085,13 @@ int main(void){ // final main
   //ST7735_FillScreen(ST7735_BLACK);
 
 //  ST7735_DrawBitmap(30, 110, titleptr, 60, 60);         //loading screen
-//  Clock_Delay1ms(3000);
+  ST7735_SetCursor(1, 6);
+  ST7735_OutString("Developed by Aidan");
+  ST7735_SetCursor(1, 7);
+  ST7735_OutString("Aalund and Jason");
+  ST7735_SetCursor(1, 8);
+  ST7735_OutString("Ochiam");
+  Clock_Delay1ms(2500);
 
   ST7735_DrawBitmap(0, 160, spaceptr, 128, 159);
   //ADCinit(); //PB18 = ADC1 channel 5, slidepot
@@ -1113,21 +1121,30 @@ int main(void){ // final main
         if(title){
             if(redrawbg){
                 ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
-                EraseOverSpace(35,70,60,60);
-                DrawOverSpace(35, 70, titleptr, 60, 60);
+                EraseOverSpace(35,80,60,60);
+                DrawOverSpace(35,80, titleptr, 60, 60);
                 redrawbg = 0;
+                titleflag = 0;
+            }
+            if(titletimer % 60 == 1){
+                titleflag++;
+                if(titleflag > 1){
+                    titleflag = 0;
+                }
             }
 
-            ST7735_SetCursor(1, 1+7);
-            ST7735_OutString((char *)Start[Language]);
-            ST7735_SetCursor(1, 2+7);
-            ST7735_OutString((char *)Start2[Language]);
-
-            ST7735_SetCursor(1, 6+7);
-            ST7735_OutString((char *)Select[Language]);
-            ST7735_SetCursor(1, 7+7);
-            ST7735_OutString((char *)Language2[Language]);
-            ST7735_SetCursor(1, 8+7);
+            if(titleflag){
+                ST7735_SetCursor(1, 6+7);
+                ST7735_OutString((char *)Start[Language]);
+                ST7735_SetCursor(1, 7+7);
+                ST7735_OutString((char *)Start2[Language]);
+            }
+            else{
+                ST7735_SetCursor(1, 6+7);
+                ST7735_OutString((char *)Select[Language]);
+                ST7735_SetCursor(1, 7+7);
+                ST7735_OutString((char *)Language2[Language]);
+            }
 
             Flag = 0;
         }
