@@ -68,7 +68,7 @@ uint32_t score; // the score for the level. Units: points
 uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
-uint32_t first;
+uint32_t first = 1;
 uint32_t titleflag = 0;
 int32_t shiftvelocity = 1;
 
@@ -211,14 +211,14 @@ void spawnboss(uint32_t x, uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint
              enemy[i].x = x;
              enemy[i].y = y;
              // TODO: change these when boss image done
-             enemy[i].image[0][0] = SmallEnemy20pointGreenA;
-             enemy[i].image[1][0] = SmallEnemy20pointYellowA;
-             enemy[i].blankimage = SmallEnemy10pointAblank;
-             enemy[i].vx = vx; // likely 0
-             enemy[i].vy = vy; // likely 0
+             enemy[i].image[0][0] = AlienBossABigGreen24;
+             enemy[i].image[1][0] = AlienBossABigYellow24;
+             enemy[i].blankimage = AlienBossABigEmpty24;
+             enemy[i].vx = 0; // likely 0
+             enemy[i].vy = 0; // likely 0
              // TODO: change these when boss image done
-             enemy[i].w = 16;
-             enemy[i].h = 10;
+             enemy[i].w = 48;
+             enemy[i].h = 24; //20
              enemy[i].type = 4;
              break;
          }
@@ -226,6 +226,39 @@ void spawnboss(uint32_t x, uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint
 }
 
 // ENEMY SHOOT SPAWNS
+//void bossball(uint32_t x,uint32_t y, int32_t vx, int32_t vy, uint32_t hp, uint32_t color){
+//    for(int i = 0; i<NUMMISSILES; i++){
+//        if(missiles[i].life == 0){
+//            missiles[i].life = 1;     //1 for alive and moving, 2 for collision, 0 for despawned
+//            missiles[i].x = x;   //start at center of player
+//            missiles[i].y = y;
+//            missiles[i].color = color;
+//            missiles[i].image[0][0] = GreenBall;
+//            missiles[i].image[1][0] = YellowBall;
+//            missiles[i].blankimage = eBall;
+//            // math: player x - enemy x / time to travel
+//            // make x velocity sinusoidal?
+//            missiles[i].vx = (player.x - enemy.x)/15;
+//            missiles[i].vy = (player.y - enemy.y)/15; // NOTE: -10 is 1 pixel per frame moving DOWN.
+//            missiles[i].w = 14;
+//            missiles[i].h = 13;
+//            missiles[i].spawntime = timer;
+//            missiles[i].tracking = 0;
+//            missiles[i].enemylaser = 1;
+//            missiles[i].type = 1;
+//            i++;
+//            if(i == NUMMISSILES){
+//                i = 0;
+//            }
+//            break;
+//        }
+//    }
+//}
+
+//void bossattack(sprite_t enemy){     //will initialize a new bullet specifically if called for enemy sprite
+//
+//}
+
 
 
 // spawns a ball starting at the provided enemy, and tracks the player for 5 seconds.
@@ -561,7 +594,16 @@ void move(void){
                for(int j = 0; j < NUMLASERS; j++){
                    if(lasers[j].life == 1){
                        // recall that the 'position' of a sprite is the top left corner
-                       if(
+                       if( (enemy[i].type == 4)
+                               && ( lasers[j].x <= (enemy[i].x + (enemy[i].w<<FIX)) ) && (lasers[j].x >= (enemy[i].x))
+                               && ( lasers[j].y <= (enemy[i].y + (enemy[i].h/2<<FIX))) && (lasers[j].y >= (enemy[i].y))){
+                           enemy[i].life--;
+                           if(enemy[i].life == 1){
+                               score += (enemy[i].type*10)+10;
+                           }
+                           lasers[j].life = 2;
+                       }
+                       else if(lasers[j].life != 2 &&
                        ((lasers[j].x <= (enemy[i].x + (enemy[i].w<<FIX))) && (lasers[j].x >= (enemy[i].x)))
                                && ((lasers[j].y <= (enemy[i].y + (enemy[i].h<<FIX))) && (lasers[j].y >= (enemy[i].y)))
 
@@ -836,6 +878,10 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
 //            spawnsmallenemy(56<<FIX,30<<FIX,0,8,1,0,0);
 //            spawnsmallenemy(36<<FIX,30<<FIX,0,8,1,0,0);
 //        }
+//        if(first){
+//            spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 0);
+//            first = 0;
+//        }
         // waves are every 6 seconds. We need 20 total waves
         if(first || timer%180 == 1){
             switch(wave)
@@ -876,6 +922,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     break;
                 case 7:
                     Sound_Fastinvader4();
+                    spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 1);
                     spawnx(GREENWAVE);
                     wave++;
                     break;
@@ -885,7 +932,7 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         }
 
         // if the level is done, end the game and set the victory status to true.
-        if(timer == 30*6*8){
+        if(timer == 30*6*9){
             win = 1;
             end = 1;
         }
