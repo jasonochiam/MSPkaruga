@@ -448,7 +448,7 @@ void spawnx(uint32_t color){
 // initialize player
 // WARNING: THE PLAYER HEALTH SYSTEM WORKS DIFFERENT THEN ENEMY SYSTEM. IM SORRY MY CODE IS BAD
 void player_init(void){
-    player.x = player.lastx = 64<<FIX;
+    player.x = player.lastx = 60<<FIX;
     player.y = player.lasty = 159<<FIX;
     player.life = NUMHP; // 4 is 3/3 hp, 3 is 2/3 hp, 2 is 1/3 hp, 1 is dying, 0 is dead (despawned)
     player.image[0][0] = PlayerShip0;
@@ -655,10 +655,10 @@ void move(void){
 
                for(int j = 0; j < NUMLASERS; j++){
                    if(lasers[j].life == 1){
-                       // recall that the 'position' of a sprite is the top left corner
+                       // recall that the 'position'
                        if( (enemy[i].type == 4)
                                && ( lasers[j].x <= (enemy[i].x + (enemy[i].w<<FIX)) ) && (lasers[j].x >= (enemy[i].x))
-                               && ( lasers[j].y <= (enemy[i].y - (enemy[i].h/2<<FIX))) && (lasers[j].y >= (enemy[i].y))){
+                               && ( lasers[j].y <= (enemy[i].y - ((enemy[i].h/2)<<FIX))) && (lasers[j].y >= (enemy[i].y))){
                            enemy[i].life--;
                            if(enemy[i].life == 1){
                                score += (enemy[i].type*10)+10;
@@ -678,7 +678,6 @@ void move(void){
                                }
                            }
                            else{
-                               //TODO: dink sound?
                                Sound_Explosion();
                            }
                            lasers[j].life = 2;
@@ -690,7 +689,7 @@ void move(void){
                for(int u = 0; u<NUMMISSILES; u++){
                    if(missiles[u].life == 1){
                       // recall that the 'position' of a sprite is the top left corner
-                      if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (500<<FIX)){
+                      if((player.x-missiles[u].x)*(player.x-missiles[u].x)+(player.y-missiles[u].y)*(player.y-missiles[u].y) <= (600<<FIX)){
                          // checking for enemy bullet collision with player
                           if(player.color != missiles[u].color && !player.invincible){
                                player.life--;
@@ -707,7 +706,7 @@ void move(void){
                   }
                }
 
-               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)
+               if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (600<<FIX)
                        && !player.invincible){
                    // get rid of line below when i-frames are added
                    enemy[i].life = 1;
