@@ -399,7 +399,7 @@ void enemylaser(sprite_t enemy){     //will initialize a new bullet specifically
 // TODO: at a wave spawn rate of 1 every 9 seconds, we need 13 or so enemies
 
 // spawns a line of basic enemies
-void spawnline(color){
+void spawnline(uint32_t color){
     spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,color,0);
     spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,color,1);
     spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,color,0);
@@ -416,7 +416,13 @@ void spawnbird(){
 }
 
 // 3 evenly spaced enemies that race down the screen. Use with other enemy formations
-// void spawnfastline()
+void spawnfastline(uint32_t color, uint32_t y){
+    spawnsmallenemy(16<<FIX,y,0,4,1,color,0);
+    spawnsmallenemy(36<<FIX,y,0,4,1,color,1);
+    spawnsmallenemy(56<<FIX,y,0,4,1,color,0);
+    spawnsmallenemy(76<<FIX,y,0,4,1,color,1);
+    spawnsmallenemy(96<<FIX,y,0,4,1,color,0);
+}
 
 // ideally this circle rotates around you
 // void spawncircle()
@@ -426,14 +432,14 @@ void spawnx(uint32_t color){
     spawnsmallenemy(8<<FIX,10<<FIX,4,5,1,color,1);
     spawnsmallenemy(8<<FIX,25<<FIX,4,5,1,color,1);
 
-    spawnsmallenemy(8<<FIX,120<<FIX,4,-5,1,color,1);
-    spawnsmallenemy(8<<FIX,105<<FIX,4,-5,1,color,1);
+    spawnsmallenemy(8<<FIX,130<<FIX,4,-5,1,color,1);
+    spawnsmallenemy(8<<FIX,150<<FIX,4,-5,1,color,1);
 
     spawnsmallenemy(108<<FIX,10<<FIX,-4,5,1,color,1);
     spawnsmallenemy(108<<FIX,25<<FIX,-4,5,1,color,1);
 
-    spawnsmallenemy(108<<FIX,105<<FIX,-4,-5,1,color,1);
-    spawnsmallenemy(108<<FIX,120<<FIX,-4,-5,1,color,1);
+    spawnsmallenemy(108<<FIX,135<<FIX,-4,-5,1,color,1);
+    spawnsmallenemy(108<<FIX,150<<FIX,-4,-5,1,color,1);
 }
 
 
@@ -455,8 +461,6 @@ void player_init(void){
     player.image[1][2] = PlayerShipYellow2;
     player.image[1][3] = PlayerShipYellow3;
     player.image[1][4] = PlayerShip4;
-    // TODO: add a ship explosion graphic?
-    // TODO: add swap animation frames if you have all the time in the world
     player.blankimage = PlayerShip4;
     player.w = 18;
     player.h = 8;
@@ -703,7 +707,6 @@ void move(void){
                   }
                }
 
-               // TODO: square distance approximation doesn't feel right just yet, but it works more or less
                if( (player.x-enemy[i].x)*(player.x-enemy[i].x)+(player.y-enemy[i].y)*(player.y-enemy[i].y) <= (500<<FIX)
                        && !player.invincible){
                    // get rid of line below when i-frames are added
@@ -721,7 +724,6 @@ void move(void){
     }
 
     // Enemy shooting system
-    // TODO: this can cause crashing super easily, not sure why
     for(int i = 0; i<NUMENEMIES; i++){
         if(enemy[i].life > 1){
             switch(enemy[i].type){
@@ -993,36 +995,64 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     wave++;
                     break;
                 case 5:
+                    spawnx(GREENWAVE);
                     wave++;
                     break;
                 case 6:
-                    Sound_Fastinvader3();
-                    spawnx(GREENWAVE);
-                    spawnshiftenemy(60<<FIX,60<<FIX,0,1,1,1,0);
-                    spawnshiftenemy(80<<FIX,80<<FIX,0,1,1,0,0);
-                    spawnshiftenemy(100<<FIX,100<<FIX,0,1,1,1,0);
                     wave++;
                     break;
                 case 7:
-                    Sound_Fastinvader2();
-                    spawnshiftenemy(60<<FIX,30<<FIX,0,3,1,0, 1);        //reverse direction
-                    spawnshiftenemy(60<<FIX,20<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
-                    spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,0, 1);
-                    spawnshiftenemy(60<<FIX,40<<FIX,0,3,1,1, 2);
-                    spawnshiftenemy(60<<FIX,70<<FIX,0,3,1,0, 1);        //reverse direction
-                    spawnshiftenemy(60<<FIX,60<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
-                    spawnshiftenemy(60<<FIX,90<<FIX,0,3,1,0, 1);
-                    spawnshiftenemy(60<<FIX,80<<FIX,0,3,1,1, 2);
-                    spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,1);
+                    Sound_Fastinvader3();
+                    spawnshiftenemy(20<<FIX,80<<FIX,0,1,1,1,0);
+                    spawnshiftenemy(40<<FIX,60<<FIX,0,1,1,0,0);
+                    spawnshiftenemy(60<<FIX,40<<FIX,0,1,1,1,0);
+                    spawnshiftenemy(80<<FIX,60<<FIX,0,1,1,0,0);
+                    spawnshiftenemy(100<<FIX,80<<FIX,0,1,1,1,0);
                     wave++;
                     break;
                 case 8:
                     wave++;
                     break;
                 case 9:
+                    Sound_Fastinvader2();
+                    spawnfastline(1, 25<<FIX);
+                    spawnfastline(0, 40<<FIX);
+                    wave++;
+                    break;
+                case 10:
+                   Sound_Fastinvader2();
+                   spawnshiftenemy(60<<FIX,30<<FIX,0,3,1,0, 1);        //reverse direction
+                   spawnshiftenemy(60<<FIX,20<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+                   spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,0, 1);
+                   spawnshiftenemy(60<<FIX,40<<FIX,0,3,1,1, 2);
+                   spawnshiftenemy(60<<FIX,70<<FIX,0,3,1,0, 1);        //reverse direction
+                   spawnshiftenemy(60<<FIX,60<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
+                   spawnshiftenemy(60<<FIX,90<<FIX,0,3,1,0, 1);
+                   spawnshiftenemy(60<<FIX,80<<FIX,0,3,1,1, 2);
+                   spawnmediumenemy(56<<FIX,9<<FIX,0,0,3,0);
+                   wave++;
+                   break;
+                case 11:
+                    wave++;
+                    break;
+                case 12:
+                    spawnmediumenemy(16<<FIX,9<<FIX,0,2,1,0);
+                    spawnmediumenemy(96<<FIX,9<<FIX,0,2,1,1);
+                    spawnshiftenemy(20<<FIX,100<<FIX,0,1,1,1,0);
+                    spawnshiftenemy(40<<FIX,80<<FIX,0,1,1,0,0);
+                    spawnshiftenemy(60<<FIX,60<<FIX,0,1,1,1,0);
+                    spawnshiftenemy(80<<FIX,80<<FIX,0,1,1,0,0);
+                    spawnshiftenemy(100<<FIX,100<<FIX,0,1,1,1,0);
+                    wave++;
+                    break;
+                case 13:
+                    wave++;
+                    break;
+                case 14:
                     Sound_Fastinvader4();
                     spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 1);
-                    spawnx(GREENWAVE);
+                    spawnfastline(GREENWAVE, 35<<FIX);
+                    spawnsmallenemy(1<<FIX,9<<FIX,0,0,1,0,0);
                     wave++;
                     break;
                 default:
@@ -1409,7 +1439,7 @@ int main(void){ // final main
           }
           else{
               if(win){
-                  ST7735_OutString("Valvano est\xA0 contento");
+                  ST7735_OutString("Profe est\xA0 contento");
               }
               else{
                   ST7735_OutString("Valvano est\xA0 triste");
