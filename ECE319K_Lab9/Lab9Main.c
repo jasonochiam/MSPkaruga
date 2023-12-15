@@ -42,7 +42,8 @@
 //Flags
 uint32_t Flag = 0; // Semaphore
 uint32_t Language; // 0 for english, 1 for spanish
-uint32_t title = 1; // flag to indicate if the game has gone past the title screen.
+uint32_t title = 1; // flag to indicate if the game is on the title screen or tutorial.
+uint32_t tutorial = 0; // flag to indicate if the game in the tutorial
 
 // Inputs
 uint32_t XData; // Variable that holds X position of stick. Units: 0-4095
@@ -69,7 +70,7 @@ uint32_t end; // tells the game to end or not (slightly different than win)
 uint8_t win; // indicates if the player has won the game (1 yes, 0 not yet)
 uint32_t wave = 0;
 uint32_t first = 1;
-uint32_t titleflag = 0;
+uint32_t titleflag = 0; // poorly named, but indicates to the title screen to show the second part of a phrase
 uint32_t bosscolor = 1;
 uint32_t bosskilled = 0;
 int32_t shiftvelocity = 1;
@@ -79,9 +80,6 @@ const uint16_t *spaceptr = space; // pointer to space image
 const uint16_t *titleptr = titlescreen; // pointer to title image
 const uint16_t *valvanoptr = valvanosad;
 uint16_t textcolor = 0;
-
-
-
 
 // ****note to ECE319K students****
 // the data sheet says the ADC does not work when clock is 80 MHz
@@ -698,6 +696,8 @@ void move(void){
                                player.iframe = timer;
                                if(player.life == 0){
                                    end = 1;
+                                   // TODO: may be important later
+                                   redrawbg = 1;
                                }
                                Sound_Explosion();
                           }
@@ -715,6 +715,7 @@ void move(void){
                    player.iframe = timer;
                    if(player.life == 0){
                        end = 1;
+                       redrawbg = 1;
                    }
                    Sound_Explosion();
                }
@@ -819,7 +820,10 @@ void draw(void){
                               enemy[i].w, enemy[i].h);
             enemy[i].life = 0;
             if(enemy[i].type == 4){
-                bosskilled = 1;
+                score += player.life*50;
+                win = 1;
+                end = 1;
+                redrawbg = 1;
             }
         }
 
@@ -895,35 +899,37 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
     ADC_InDual(ADC1,&XData,&YData);
 
     // 2) read input switches
+    lastshoot = shoots;
     shoots = Shoot_In();
 
+    lastselects = selects;
+    selects = Select_In();
     // optional hold down to shoot mode with shot limit
 //    if(shoots == 1 && timer-lastshoot > 5){
 //        lasers_init();
 //        lastshoot = timer;
 //    }
-    if(lastshoot == 0 && shoots == 1){
+    if( (lastshoot == 0 && shoots == 1) || (lastups == 0 && ups == 1) && !title){
         lasers_init();
         Sound_Shoot();
     }
-    lastshoot = shoots;
 
-    selects = Select_In();
-    lastselects = selects;
 
+    lastups = ups;
     ups = Up_In();
-    if(lastups == 0 && ups == 1 && title){
+    if((lastups == 0 && ups == 1) && title){
         Language = (Language+1)&(0x1);
         redrawbg = 1;
     }
-    lastups = ups;
+//    lastups = ups;
 
+    lastswaps = swaps;
     swaps = Swap_In();
-    if((lastswaps == 0 && swaps == 1) || (lastups == 0 && ups == 1) && !title){
+    if((lastswaps == 0 && swaps == 1) || (lastselects == 0 && selects == 1) && !title){
         changecolor();
         Sound_Highpitch();
     }
-    lastswaps = swaps;
+//    lastswaps = swaps;
 
     // basically if click and some condition about how many shots the player has absorbed, set all enemy lives to 0 EXCEPT boss types if we have them
     click = JoyStick_InButton();
@@ -943,9 +949,6 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
         timer++;
 
         // after about nine seconds, spawn a wave
-//        if(timer%30 == 1){
-//            spawnboss(40<<FIX, 30<<FIX, 0, 0, 10, 0);
-//        }
 //        if(first){
 //            spawnshiftenemy(60<<FIX,60<<FIX,0,3,1,0, 1);        //reverse direction
 //            spawnshiftenemy(60<<FIX,50<<FIX,0,3,1,1, 2);        //normal direction(left), but quick movement
@@ -1058,16 +1061,16 @@ void TIMG12_IRQHandler(void){uint32_t pos,msg;
                     break;
             }
         }
-
-        // if the level is done, end the game and set the victory status to true.
-        if(bosskilled){
-            win = 1;
-            end = 1;
-        }
     }
     else{
-        if(selects){
-            title = 0;
+        if(lastselects == 0 && selects == 1){
+            if(tutorial){
+                title = 0;
+            }
+            else{
+                tutorial = 1;
+            }
+
             redrawbg = 1;
         }
         titletimer++;
@@ -1123,6 +1126,32 @@ const char *Language2[2] = {Language2_English, Language2_Spanish};
 //const char *Language3[2] = {Language3_English, Language3_Spanish};
 const char *Start[2] = {Start_English, Start_Spanish};
 const char *Start2[2] = {Start2_English, Start2_Spanish};
+
+// TUTORIAL MESSAGES
+const char Tutorial_English[] = "Tutorial";
+const char Tutorial_Spanish[] = "Tutorial"; // convenient!
+
+const char Fly_English[] = "Fly";
+const char Fly_Spanish[] = "Volar";
+
+const char Shoot_English[] = "Shoot";
+const char Shoot_Spanish[] = "Disparar";
+
+const char Switch_English[] = "Swap color";
+const char Switch_Spanish[] = "Cambia color";
+
+const char Mechanics1_English[] = "Match color to be";
+const char Mechanics1_Spanish[] = "Combina color para";
+
+const char Mechanics2_English[] = "immune and attack  ";
+const char Mechanics2_Spanish[] = "ser inmune y atacar";
+
+const char *Tutorial[2] = {Tutorial_English, Tutorial_Spanish};
+const char *Fly[2] = {Fly_English, Fly_Spanish};
+const char *Shoot[2] = {Shoot_English, Shoot_Spanish};
+const char *Switch[2] = {Switch_English, Switch_Spanish};
+const char *Mechanics1[2] = {Mechanics1_English, Mechanics1_Spanish};
+const char *Mechanics2[2] = {Mechanics2_English, Mechanics2_Spanish};
 
 // GAME OVER SCREEN MESSAGES
 
@@ -1345,120 +1374,200 @@ int main(void){ // final main
   // initialize interrupts on TimerG12 at 30 Hz
   TimerG12_IntArm(80000000/30,3); // low priority interrupt, lower than 3 is higher prio
   // initialize all data structures
-
-//  spawnsmallenemy(16<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
-//  spawnsmallenemy(36<<FIX,9<<FIX,0,2,1,GREENWAVE,1);
-//  spawnsmallenemy(56<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
-//  spawnsmallenemy(76<<FIX,9<<FIX,0,2,1,GREENWAVE,1);
-//  spawnsmallenemy(96<<FIX,9<<FIX,0,2,1,GREENWAVE,0);
-//  spawnsmallenemy(16<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
-//  spawnsmallenemy(36<<FIX,100<<FIX,0,2,1,GREENWAVE,1);
-//  spawnsmallenemy(56<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
-//  spawnsmallenemy(76<<FIX,100<<FIX,0,2,1,GREENWAVE,1);
-//  spawnsmallenemy(96<<FIX,100<<FIX,0,2,1,GREENWAVE,0);
   __enable_irq();
   while(1){
     while(Flag){
         if(title){
             if(redrawbg){
                 ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
-                EraseOverSpace(35,80,60,60);
-                DrawOverSpace(35,80, titleptr, 60, 60);
+                if(!tutorial){
+                    EraseOverSpace(35,80,60,60);
+                    DrawOverSpace(35,80, titleptr, 60, 60);
+                }
                 redrawbg = 0;
                 titleflag = 0;
             }
+
             if(titletimer % 60 == 1){
                 titleflag++;
                 if(titleflag > 1){
                     titleflag = 0;
                 }
+                LED_Toggle(LEFT);
+                LED_Toggle(MID);
+                LED_Toggle(RIGHT);
             }
 
-            if(titleflag){
-                ST7735_SetCursor(1, 6+7);
-                ST7735_OutString((char *)Start[Language]);
-                ST7735_SetCursor(1, 7+7);
-                ST7735_OutString((char *)Start2[Language]);
+            if(!tutorial){
+                if(titleflag){
+                    ST7735_SetCursor(1, 6+7);
+                    ST7735_OutString((char *)Start[Language]);
+                    ST7735_SetCursor(1, 7+7);
+                    ST7735_OutString((char *)Start2[Language]);
+                }
+                else{
+                    ST7735_SetCursor(1, 6+7);
+                    ST7735_OutString((char *)Select[Language]);
+                    ST7735_SetCursor(1, 7+7);
+                    ST7735_OutString((char *)Language2[Language]);
+                }
             }
             else{
-                ST7735_SetCursor(1, 6+7);
-                ST7735_OutString((char *)Select[Language]);
-                ST7735_SetCursor(1, 7+7);
-                ST7735_OutString((char *)Language2[Language]);
+                ST7735_SetCursor(7, 1);
+                ST7735_OutString((char *)Tutorial[Language]);
+                ST7735_SetCursor(1, 2);
+                ST7735_OutString("STICK:");
+                ST7735_OutString((char *)Fly[Language]);
+                ST7735_SetCursor(1, 3);
+                ST7735_OutString("LFT/RGHT:");
+                ST7735_OutString((char *)Shoot[Language]);
+                ST7735_SetCursor(1, 4);
+                ST7735_OutString("DWN/UP:");
+                ST7735_OutString((char *)Switch[Language]);
+                ST7735_SetCursor(1, 6);
+                ST7735_OutString((char *)Mechanics1[Language]);
+                ST7735_SetCursor(1, 7);
+                ST7735_OutString((char *)Mechanics2[Language]);
+
+                //DrawOverSpace(int32_t x, int32_t y, const uint16_t *image, int32_t w, int32_t h)
+                DrawOverSpace(10, 100, SmallEnemy10pointGreenA, 16, 10);
+                DrawOverSpace(18, 113, LaserGreen0, 2, 9);
+                DrawOverSpace(18, 124, LaserGreen0, 2, 9);
+                DrawOverSpace(10, 139, PlayerShip0, 18, 8);
+                // DRAW GREEN CHECK
+                ST7735_Line(25, 145, 17, 155, 0x07E0);
+                ST7735_Line(19, 155, 12, 150, 0x07E0);
+
+
+                DrawOverSpace(55, 100, SmallEnemy10pointYellowA, 16, 10);
+                DrawOverSpace(63, 113, LaserYellow0, 2, 9);
+                DrawOverSpace(63, 124, LaserYellow0, 2, 9);
+                DrawOverSpace(55, 139, PlayerShipYellow0, 18, 8);
+                // DRAW GREEN CHECK
+                ST7735_Line(57+12, 145, 49+12, 155, 0x07E0);
+                ST7735_Line(51+12, 155, 44+12, 150, 0x07E0);
+
+                DrawOverSpace(115-16, 100, SmallEnemy20pointYellowA, 16, 10);
+                DrawOverSpace(115-16+8, 113, LaserGreen0, 2, 9);
+                DrawOverSpace(115-16+8, 124, LaserGreen0, 2, 9);
+                DrawOverSpace(115-16, 139, PlayerShip0, 18, 8);
+                // DRAW RED X
+                ST7735_Line(101, 145, 114, 155, 0x001F);
+                ST7735_Line(101, 155, 114, 145, 0x001F);
             }
 
             Flag = 0;
         }
+        // if we aren't on the title screen do other stuff
         else{
             if(redrawbg){
-                ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
-                redrawbg = 0;
+                if(!end){
+                    ST7735_DrawBitmap(0, 159, spaceptr, 128, 160);
+                    redrawbg = 0;
+                }
+                else{
+                    ST7735_FillScreen(0x0000);   // set screen to black
+                // draw a funny valvano thing
+                  ST7735_SetCursor(6-(2*Language), 1);
+                  if(win){
+                      textcolor = (ST7735_GREEN);
+                      valvanoptr = valvanohappy;
+                      ST7735_DrawBitmap(44, 80, valvanoptr, 40, 52);
+                  }
+                  else{
+                      textcolor = (ST7735_RED);
+                      ST7735_DrawBitmap(44, 80, valvanoptr, 40, 50);
+                  }
+
+
+                  ST7735_DrawString(6-(2*Language),1,(char *)GameOver[Language],textcolor);
+                  ST7735_SetCursor(1, 9);
+                  if(!Language){
+                      if(win){
+                          ST7735_OutString("Valvano is happy!");
+                      }
+                      else{
+                          ST7735_OutString("Valvano is sad!");
+                      }
+                  }
+                  else{
+                      if(win){
+                          ST7735_OutString("Profe est\xA0 contento");
+                      }
+                      else{
+                          ST7735_OutString("Valvano est\xA0 triste");
+                      }
+
+                  }
+                  ST7735_SetCursor(1, 11);
+                  ST7735_OutString((char *)Status0[Language]);
+                  ST7735_OutString((char *)Status1[win][Language]);
+                  ST7735_SetCursor(1, 12);
+                  ST7735_OutString((char *)Status2[win][Language]);
+                  ST7735_SetCursor(1, 13);
+                  ST7735_OutString((char *)Status3[win][Language]);
+                  ST7735_SetCursor(1, 14);
+                  ST7735_OutString((char *)Score[Language]);
+                  ST7735_OutUDec(score);
+                  redrawbg = 0;
+                }
             }
             // update ST7735R with sprites
-            draw();
+            if(!end){
+                draw();
+            }
             // clear semaphore
             Flag = 0;
+            if(end){
+                if(win){
+                    LED_On(LEFT);
+                    LED_Off(RIGHT);
+                }
+                else{
+                    LED_On(RIGHT);
+                    LED_Off(LEFT);
+                }
+                LED_Off(MID);
+                  if(selects){
+                    // reset a bunch of flags so we go back to the title screen and everything gets reset.
+                    redrawbg = 1;
+                    timer = 0;
+                    titletimer = 0;
+                    score = 0;
+                    wave = 0;
+                    first = 1;
+                    titleflag = 0; // poorly named, but indicates to the title screen to show the second part of a phrase
+                    bosscolor = 1;
+                    bosskilled = 0;
+                    shiftvelocity = 1;
+                    Flag = 0; // Semaphore
+                    title = 1; // flag to indicate if the game is on the title screen or tutorial.
+                    tutorial = 0; // flag to indicate if the game in the tutorial
+                    player_init();
+                    end = 0;
+                    win = 0;
+                    LED_Off(LEFT);
+                    LED_Off(MID);
+                    LED_Off(RIGHT);
+                    //'turn off' all enemies, lasers, and other things
+                    for(int i = 0; i<NUMENEMIES; i++){
+                        if(enemy[i].life){
+                            enemy[i].life = 0;
+                        }
+                    }
+                    for(int i = 0; i<NUMLASERS; i++){
+                        if(lasers[i].life){
+                            lasers[i].life = 0;
+                        }
+                    }
+                    for(int i = 0; i<NUMMISSILES; i++){
+                        if(missiles[i].life){
+                            missiles[i].life = 0;
+                        }
+                    }
+                  }
+            }
         }
     }
-
-    if(end){
-        TIMG12->CPU_INT.IMASK = 0; // zero event mask
-        if(win){
-            LED_On(LEFT);
-            LED_Off(RIGHT);
-        }
-        else{
-            LED_On(RIGHT);
-            LED_Off(LEFT);
-        }
-        LED_Off(MID);
-        ST7735_FillScreen(0x0000);   // set screen to black
-        // draw a funny valvano thing
-          ST7735_SetCursor(6-(2*Language), 1);
-          if(win){
-              textcolor = (ST7735_GREEN);
-              valvanoptr = valvanohappy;
-              ST7735_DrawBitmap(44, 80, valvanoptr, 40, 52);
-          }
-          else{
-              textcolor = (ST7735_RED);
-              ST7735_DrawBitmap(44, 80, valvanoptr, 40, 50);
-          }
-
-
-          ST7735_DrawString(6-(2*Language),1,(char *)GameOver[Language],textcolor);
-          ST7735_SetCursor(1, 9);
-          if(!Language){
-              if(win){
-                  ST7735_OutString("Valvano is happy!");
-              }
-              else{
-                  ST7735_OutString("Valvano is sad!");
-              }
-          }
-          else{
-              if(win){
-                  ST7735_OutString("Profe est\xA0 contento");
-              }
-              else{
-                  ST7735_OutString("Valvano est\xA0 triste");
-              }
-
-          }
-          ST7735_SetCursor(1, 11);
-          ST7735_OutString((char *)Status0[Language]);
-          ST7735_OutString((char *)Status1[win][Language]);
-          ST7735_SetCursor(1, 12);
-          ST7735_OutString((char *)Status2[win][Language]);
-          ST7735_SetCursor(1, 13);
-          ST7735_OutString((char *)Status3[win][Language]);
-          ST7735_SetCursor(1, 14);
-          ST7735_OutString((char *)Score[Language]);
-          ST7735_OutUDec(score);
-
-          while(1){
-          }
-    }
-
   }
 }
