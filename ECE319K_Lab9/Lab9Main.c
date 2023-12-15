@@ -1383,6 +1383,11 @@ int main(void){ // final main
                 if(!tutorial){
                     EraseOverSpace(35,80,60,60);
                     DrawOverSpace(35,80, titleptr, 60, 60);
+//                    DrawOverSpace(10, 100, AlienBossABigYellow24, 48, 24);
+                    DrawOverSpace(28, 95, SmallEnemy10pointGreenA, 16, 10);
+                    DrawOverSpace(48, 95, SmallEnemy10pointYellowA, 16, 10);
+                    DrawOverSpace(68, 95, SmallEnemy20pointGreenA, 16, 10);
+                    DrawOverSpace(88, 95, SmallEnemy20pointYellowA, 16, 10);
                 }
                 redrawbg = 0;
                 titleflag = 0;
@@ -1412,7 +1417,7 @@ int main(void){ // final main
                     ST7735_OutString((char *)Language2[Language]);
                 }
             }
-            else{
+            else{ // draw tutorial screen if tutorial flag is 1
                 ST7735_SetCursor(7, 1);
                 ST7735_OutString((char *)Tutorial[Language]);
                 ST7735_SetCursor(1, 2);
